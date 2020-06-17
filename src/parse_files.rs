@@ -6,7 +6,7 @@ use glob;
 use crate::parse_cmd::*;
 use std::result::Result;
 
-fn parse_file_helper<R: Read>(reader: R) -> Vec<Vec<usize>>
+fn parse_file_helper<R: Read>(reader: R, every: usize) -> Vec<Vec<usize>>
 {
     let buf_reader = BufReader::new(reader);
     
@@ -16,7 +16,8 @@ fn parse_file_helper<R: Read>(reader: R) -> Vec<Vec<usize>>
             {
                 !line.trim_start().starts_with("#") // skip comments
             }
-        ).map( |line|
+        ).step_by(every)
+        .map( |line|
         {
             let slice = line.trim();
             
@@ -27,7 +28,7 @@ fn parse_file_helper<R: Read>(reader: R) -> Vec<Vec<usize>>
     ).collect()
 }
 
-pub fn parse_file<P: AsRef<Path>>(filename: P) -> Vec<Vec<usize>>
+pub fn parse_file<P: AsRef<Path>>(filename: P, every: usize) -> Vec<Vec<usize>>
 {
     let is_gz = filename.as_ref()
         .to_str()
@@ -36,10 +37,10 @@ pub fn parse_file<P: AsRef<Path>>(filename: P) -> Vec<Vec<usize>>
     let file = File::open(filename).unwrap();
     if is_gz {
         let decoder = GzDecoder::new(file);
-        parse_file_helper(decoder)
+        parse_file_helper(decoder, every)
     } else 
     {
-        parse_file_helper(file)
+        parse_file_helper(file, every)
     }
 }
 
@@ -48,7 +49,7 @@ pub fn parse_all_files(opts: HeatmapOpts) -> Vec<Vec<usize>>
 {
     let mut res = Vec::new();
     for entry in glob::glob(&opts.files).unwrap().filter_map(Result::ok) {
-        res.extend(parse_file(entry));
+        res.extend(parse_file(entry, opts.every));
     }
     res
 }

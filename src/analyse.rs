@@ -205,7 +205,8 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_ba
 pub fn write_matr<P: AsRef<Path>>(matr: Vec<Vec<f64>>, path: P)
 {
     println!("Creating: {}", path.as_ref().to_str().unwrap());
-    let mut writer = File::create(path).unwrap();
+    let writer = File::create(path).unwrap();
+    let mut writer = BufWriter::new(writer);
     writeln!(writer, "#{}", get_cmd_args()).unwrap();
     writeln!(writer, "#{}", env::current_dir().unwrap().to_str().unwrap()).unwrap();
     for line in matr{

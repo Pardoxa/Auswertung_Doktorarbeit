@@ -36,6 +36,10 @@ pub enum Opt
         #[structopt(long)]
         /// hide progress bar
         no_p_bar: bool,
+
+        #[structopt(long, short)]
+        /// use every nth step
+        every: usize,
     },
 }
 
@@ -48,19 +52,20 @@ pub struct HeatmapOpts{
     pub save: String,
     pub j: usize,
     pub no_p_bar: bool,
+    pub every: usize,
 }
 
 impl HeatmapOpts{
     pub fn generate_filename(&self) -> String
     {
-        format!("v{}N{}_b{}_{}.dat", env!("CARGO_PKG_VERSION"), self.n, self.bins, self.save)
+        format!("v{}N{}_b{}_e{}_{}.dat", env!("CARGO_PKG_VERSION"), self.n, self.bins, self.every, self.save)
     }
 }
 
 impl From<Opt> for HeatmapOpts{
     fn from(opt: Opt) -> Self {
         match opt {
-            Opt::Heatmap{n, bins, files, save, j, no_p_bar} => {
+            Opt::Heatmap{n, bins, files, save, j, no_p_bar, every} => {
                 if n % bins != 0 {
                     eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
                     exit(-1);
@@ -72,7 +77,8 @@ impl From<Opt> for HeatmapOpts{
                     bin_size: n / bins,
                     save,
                     j,
-                    no_p_bar
+                    no_p_bar,
+                    every,
                 }
             }
         }
