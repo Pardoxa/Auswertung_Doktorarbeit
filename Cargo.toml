@@ -1,5 +1,5 @@
 [package]
-name = "sir_compareR"
+name = "sir_compare_r"
 version = "0.1.0"
 authors = ["Yannick Feld <yannick.feld@uol.de>"]
 edition = "2018"
@@ -11,6 +11,7 @@ flate2 = { version = "1.0", features = ["cloudflare_zlib"], default-features = f
 structopt = "0.3"
 glob = "0.3.0"
 average = "0.10.4"
+indicatif = {version = "0.15", features = ["improved_unicode"]}
 
 [profile.release]
 opt-level = 3

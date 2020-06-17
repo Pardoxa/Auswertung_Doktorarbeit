@@ -8,16 +8,17 @@ use calc::*;
 fn main() {
     let options = get_cmd_opts();
     match options {
-        Opt::Read{..} => read_helper(options.into()),
+        Opt::Read{..} => write_heatmap(options.into()),
     };
 }
 
 
-fn read_helper(opts: ReadOpts)
+fn write_heatmap(opts: ReadOpts)
 {
+    let save_file = opts.generate_filename();
     let vec = parse_all_files(opts.clone());
-    
     let sorted_data = group_data(vec, opts);
-    compare_curves(sorted_data);
+    let matr = compare_curves(sorted_data);
+    write_matr(matr, save_file);
     //println!("{:?}", sorted_data);
 }

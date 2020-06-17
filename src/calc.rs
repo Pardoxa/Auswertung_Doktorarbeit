@@ -1,16 +1,17 @@
 use crate::ReadOpts;
 use average::Mean;
+use std::path::Path;
+use std::fs::*;
+use std::io::*;
+use std::env;
+use indicatif::*;
+use std::convert::*;
 
-pub fn norm(source: Vec<Vec<usize>>) -> Vec<Vec<f64>>
+pub fn get_cmd_args() -> String 
 {
-    source.into_iter().map(
-        |v|
-        {
-            let max = *v.iter().max().unwrap();
-            let inverse = 1.0 / max as f64;
-            v.into_iter().map(|num| num as f64 * inverse).collect()
-        }
-    ).collect()
+    // get cmd arguments
+    let args: Vec<String> = env::args().collect();
+    args.join(" ")
 }
 
 pub fn group_data(data: Vec<Vec<usize>>, opts: ReadOpts) -> Vec<Vec<Vec<f64>>>
@@ -34,7 +35,7 @@ pub fn group_data(data: Vec<Vec<usize>>, opts: ReadOpts) -> Vec<Vec<Vec<f64>>>
     vec
 }
 
-pub fn compare_curves(data: Vec<Vec<Vec<f64>>>)
+pub fn compare_curves(data: Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>>
 {
     let mut tmp_vec = Vec::new();
     let mut diff_helper = Vec::new();
@@ -44,16 +45,33 @@ pub fn compare_curves(data: Vec<Vec<Vec<f64>>>)
         for _ in 0..data.len(){
             matr[i].push(0.0);
         }
-        
     }
+
+    let mut workload = 0u64;
+    for i in 0..data.len(){
+        for j in 0..data.len(){
+            if i < j{
+                continue;
+            }
+            workload += u64::try_from(data[i].len()).unwrap() * u64::try_from(data[j].len()).unwrap();
+        }
+    }
+    let bar = ProgressBar::new(workload);
+    bar.set_style(ProgressStyle::default_bar()
+        .template("[{elapsed_precise} - {eta_precise}] {wide_bar}"));
+
     for i in 0..data.len(){
         for j in 0..data.len(){
             if i < j {
                 continue;
             }
             diff_helper.clear();
-            for c1 in data[i].iter(){
-                for c2 in data[j].iter(){
+            for (index_c1, c1) in data[i].iter().enumerate(){
+                for (index_c2, c2) in data[j].iter().enumerate(){
+                    // do not compare curve with itself
+                    if i == j && index_c1 == index_c2 {
+                        continue;
+                    }
                     tmp_vec.clear();
                     tmp_vec.extend(
                         c1.iter()
@@ -65,16 +83,27 @@ pub fn compare_curves(data: Vec<Vec<Vec<f64>>>)
                 }
             }
             let res: Mean = diff_helper.iter().collect();
-            println!("{:e}", res.mean());
             matr[i][j] = res.mean();
             matr[j][i] = matr[i][j];
+            bar.inc(u64::try_from(diff_helper.len()).unwrap());
         }
-        println!();
     }
+    matr
+    
+}
+
+pub fn write_matr<P: AsRef<Path>>(matr: Vec<Vec<f64>>, path: P)
+{
+    let mut writer = File::create(path).unwrap();
+    writeln!(writer, "#{}", get_cmd_args()).unwrap();
     for line in matr{
-        for val in line{
-            print!("{:e} ", val);
+        for (index, val) in line.iter().enumerate(){
+            if index == 0 {
+                write!(writer, "{:e}", val).unwrap();
+            } else {
+                write!(writer, " {:e}", val).unwrap();
+            }
         }
-        println!();
+        writeln!(writer).unwrap();
     }
 }
