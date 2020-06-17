@@ -44,7 +44,7 @@ pub fn parse_file<P: AsRef<Path>>(filename: P) -> Vec<Vec<usize>>
 }
 
 
-pub fn parse_all_files(opts: ReadOpts) -> Vec<Vec<usize>>
+pub fn parse_all_files(opts: HeatmapOpts) -> Vec<Vec<usize>>
 {
     let mut res = Vec::new();
     for entry in glob::glob(&opts.files).unwrap().filter_map(Result::ok) {

@@ -1,4 +1,4 @@
-use crate::ReadOpts;
+use crate::HeatmapOpts;
 use average::Mean;
 use std::path::Path;
 use std::fs::*;
@@ -17,7 +17,7 @@ pub fn get_cmd_args() -> String
     args.join(" ")
 }
 
-pub fn group_data(data: Vec<Vec<usize>>, opts: ReadOpts) -> Vec<Vec<Vec<f64>>>
+pub fn group_data(data: Vec<Vec<usize>>, opts: HeatmapOpts) -> Vec<Vec<Vec<f64>>>
 {
     let index = |energy| (energy - 1) / opts.bin_size;
     let mut vec = vec![Vec::new(); opts.bins];
@@ -38,7 +38,7 @@ pub fn group_data(data: Vec<Vec<usize>>, opts: ReadOpts) -> Vec<Vec<Vec<f64>>>
     vec
 }
 
-pub fn compare_curves(data: Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>>
+pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool) -> Vec<Vec<f64>>
 {
     let mut tmp_vec = Vec::new();
     let mut diff_helper = Vec::new();
@@ -59,9 +59,16 @@ pub fn compare_curves(data: Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>>
             workload += u64::try_from(data[i].len()).unwrap() * u64::try_from(data[j].len()).unwrap();
         }
     }
-    let bar = ProgressBar::new(workload);
-    bar.set_style(ProgressStyle::default_bar()
+    let bar = if p_bar{
+        let b = ProgressBar::new(workload);
+        b.set_style(ProgressStyle::default_bar()
         .template("[{elapsed_precise} - {eta_precise}] {wide_bar}"));
+        Some(b)
+    }else{
+        None
+    };
+     
+    
 
     for i in 0..data.len(){
         for j in 0..data.len(){
@@ -88,7 +95,9 @@ pub fn compare_curves(data: Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>>
             let res: Mean = diff_helper.iter().collect();
             matr[i][j] = res.mean();
             matr[j][i] = matr[i][j];
-            bar.inc(u64::try_from(diff_helper.len()).unwrap());
+            for b in bar.iter(){
+                b.inc(u64::try_from(diff_helper.len()).unwrap());
+            }
         }
     }
     matr
@@ -101,7 +110,7 @@ pub struct MatRes{
     pub j: usize,
 }
 
-pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>>
+pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_bar: bool) -> Vec<Vec<f64>>
 {
     
     let mut matr = Vec::with_capacity(data.len());
@@ -127,49 +136,61 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>>
 
     }
 
-    let bar = ProgressBar::new(workload);
-    bar.set_style(ProgressStyle::default_bar()
+    let bar = if p_bar{
+        let b = ProgressBar::new(workload);
+        b.set_style(ProgressStyle::default_bar()
         .template("[{elapsed_precise} - {eta_precise}] {wide_bar}"));
+        Some(b)
+    }else{
+        None
+    };
   
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threds).build().unwrap();
 
     let mut results = Vec::new();
-    jobs.into_par_iter().map(
-        |(i, j)|
-        {
-            let mut diff_helper = Vec::with_capacity(data[i].len() * data[j].len());
-            let mut tmp_vec = Vec::with_capacity(data[j].len());
-            let mut result = Vec::new();
-            
-            
-            for (index_c1, c1) in data[i].iter().enumerate(){
-                for (index_c2, c2) in data[j].iter().enumerate(){
-                    // do not compare curve with itself
-                    if i == j && index_c1 == index_c2 {
-                        continue;
+    pool.install(||
+    {
+        jobs.into_par_iter().map(
+            |(i, j)|
+            {
+                let mut diff_helper = Vec::with_capacity(data[i].len() * data[j].len());
+                let mut tmp_vec = Vec::with_capacity(data[j].len());
+                let mut result = Vec::new();
+                
+                
+                for (index_c1, c1) in data[i].iter().enumerate(){
+                    for (index_c2, c2) in data[j].iter().enumerate(){
+                        // do not compare curve with itself
+                        if i == j && index_c1 == index_c2 {
+                            continue;
+                        }
+                        tmp_vec.clear();
+                        tmp_vec.extend(
+                            c1.iter()
+                                .zip(c2.iter())
+                                .map(|(val1, val2)| (val1 - val2).abs())
+                        );
+                        let mean: Mean = tmp_vec.iter().collect();
+                        diff_helper.push(mean.mean());
                     }
-                    tmp_vec.clear();
-                    tmp_vec.extend(
-                        c1.iter()
-                            .zip(c2.iter())
-                            .map(|(val1, val2)| (val1 - val2).abs())
-                    );
-                    let mean: Mean = tmp_vec.iter().collect();
-                    diff_helper.push(mean.mean());
                 }
+                let res: Mean = diff_helper.iter().collect();
+                result.push(
+                    MatRes{
+                        mean: res.mean(),
+                        i,
+                        j,
+                    }
+                );
+                for b in bar.iter(){
+                    b.inc(u64::try_from(diff_helper.len()).unwrap());
+                }
+                
+                result
             }
-            let res: Mean = diff_helper.iter().collect();
-            result.push(
-                MatRes{
-                    mean: res.mean(),
-                    i,
-                    j,
-                }
-            );
-            bar.inc(u64::try_from(diff_helper.len()).unwrap());
-            
-            result
-        }
-    ).collect_into_vec(&mut results);
+        ).collect_into_vec(&mut results);
+    });
+    
 
     for res in results{
         for r in res{
@@ -183,6 +204,7 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>>
 
 pub fn write_matr<P: AsRef<Path>>(matr: Vec<Vec<f64>>, path: P)
 {
+    println!("Creating: {}", path.as_ref().to_str().unwrap());
     let mut writer = File::create(path).unwrap();
     writeln!(writer, "#{}", get_cmd_args()).unwrap();
     writeln!(writer, "#{}", env::current_dir().unwrap().to_str().unwrap()).unwrap();

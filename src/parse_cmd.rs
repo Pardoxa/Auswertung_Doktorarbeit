@@ -12,7 +12,7 @@ pub fn get_cmd_opts() -> Opt
 pub enum Opt
 {
     /// TODO description
-    Read {
+    Heatmap {
         /// number of nodes
         #[structopt(long,short)]
         n: usize,
@@ -27,30 +27,40 @@ pub enum Opt
 
         /// save file to create
         #[structopt(long)]
-        save: String
+        save: String,
+
+        #[structopt(short)]
+        /// number of threads to use
+        j: usize,
+
+        #[structopt(long)]
+        /// hide progress bar
+        no_p_bar: bool,
     },
 }
 
 #[derive(Clone)]
-pub struct ReadOpts{
+pub struct HeatmapOpts{
     pub n: usize,
     pub bins: usize,
     pub files: String,
     pub bin_size: usize,
     pub save: String,
+    pub j: usize,
+    pub no_p_bar: bool,
 }
 
-impl ReadOpts{
+impl HeatmapOpts{
     pub fn generate_filename(&self) -> String
     {
         format!("v{}N{}_b{}_{}.dat", env!("CARGO_PKG_VERSION"), self.n, self.bins, self.save)
     }
 }
 
-impl From<Opt> for ReadOpts{
+impl From<Opt> for HeatmapOpts{
     fn from(opt: Opt) -> Self {
         match opt {
-            Opt::Read{n, bins, files, save} => {
+            Opt::Heatmap{n, bins, files, save, j, no_p_bar} => {
                 if n % bins != 0 {
                     eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
                     exit(-1);
@@ -61,6 +71,8 @@ impl From<Opt> for ReadOpts{
                     files,
                     bin_size: n / bins,
                     save,
+                    j,
+                    no_p_bar
                 }
             }
         }
