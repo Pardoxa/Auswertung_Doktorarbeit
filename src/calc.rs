@@ -112,75 +112,61 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>) -> Vec<Vec<f64>>
         }
     }
 
+    // calculating workload, create jobs
     let mut workload = 0u64;
-    let mut workload_i = Vec::new();
+    let mut jobs = Vec::new();
     for i in 0..data.len(){
-        let prev_work = workload;
         for j in 0..data.len(){
             if i < j{
                 continue;
             }
             let work = u64::try_from(data[i].len()).unwrap() * u64::try_from(data[j].len()).unwrap();
             workload += work;
+            jobs.push((i, j));
         }
-        workload_i.push((i, workload - prev_work));
 
     }
-    workload_i.sort_unstable_by_key(|(_, work)| u64::MAX - *work);
 
     let bar = ProgressBar::new(workload);
     bar.set_style(ProgressStyle::default_bar()
         .template("[{elapsed_precise} - {eta_precise}] {wide_bar}"));
-    
-    let order: Vec<_> = workload_i.into_iter().map(|(i, _)| i).collect();
-    let par_iter = order.into_par_iter();
-
-    // calculate max size
-    let max_size = data.iter()
-        .map(|vec| vec.len())
-        .max().unwrap();
-    // second max size
-    let second = data.iter().filter(|vec| vec.len() != max_size)
-        .map(|vec| vec.len()).max().unwrap();
+  
 
     let mut results = Vec::new();
-    par_iter.map(
-        |i|
+    jobs.into_par_iter().map(
+        |(i, j)|
         {
-            let mut diff_helper = Vec::with_capacity(second * max_size);
-            let mut tmp_vec = Vec::with_capacity(max_size);
+            let mut diff_helper = Vec::with_capacity(data[i].len() * data[j].len());
+            let mut tmp_vec = Vec::with_capacity(data[j].len());
             let mut result = Vec::new();
-            for j in 0..data.len(){
-                if i < j {
-                    continue;
-                }
-                diff_helper.clear();
-                for (index_c1, c1) in data[i].iter().enumerate(){
-                    for (index_c2, c2) in data[j].iter().enumerate(){
-                        // do not compare curve with itself
-                        if i == j && index_c1 == index_c2 {
-                            continue;
-                        }
-                        tmp_vec.clear();
-                        tmp_vec.extend(
-                            c1.iter()
-                                .zip(c2.iter())
-                                .map(|(val1, val2)| (val1 - val2).abs())
-                        );
-                        let mean: Mean = tmp_vec.iter().collect();
-                        diff_helper.push(mean.mean());
+            
+            
+            for (index_c1, c1) in data[i].iter().enumerate(){
+                for (index_c2, c2) in data[j].iter().enumerate(){
+                    // do not compare curve with itself
+                    if i == j && index_c1 == index_c2 {
+                        continue;
                     }
+                    tmp_vec.clear();
+                    tmp_vec.extend(
+                        c1.iter()
+                            .zip(c2.iter())
+                            .map(|(val1, val2)| (val1 - val2).abs())
+                    );
+                    let mean: Mean = tmp_vec.iter().collect();
+                    diff_helper.push(mean.mean());
                 }
-                let res: Mean = diff_helper.iter().collect();
-                result.push(
-                    MatRes{
-                        mean: res.mean(),
-                        i,
-                        j,
-                    }
-                );
-                bar.inc(u64::try_from(diff_helper.len()).unwrap());
             }
+            let res: Mean = diff_helper.iter().collect();
+            result.push(
+                MatRes{
+                    mean: res.mean(),
+                    i,
+                    j,
+                }
+            );
+            bar.inc(u64::try_from(diff_helper.len()).unwrap());
+            
             result
         }
     ).collect_into_vec(&mut results);
