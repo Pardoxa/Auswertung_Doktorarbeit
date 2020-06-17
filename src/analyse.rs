@@ -17,23 +17,24 @@ pub fn get_cmd_args() -> String
     args.join(" ")
 }
 
-pub fn group_data(data: Vec<Vec<usize>>, opts: HeatmapOpts) -> Vec<Vec<Vec<f64>>>
+pub fn group_data(data: Vec<(usize, Vec<f64>)>, opts: HeatmapOpts) -> Vec<Vec<Vec<f64>>>
 {
     let index = |energy| (energy - 1) / opts.bin_size;
     let mut vec = vec![Vec::new(); opts.bins];
-    for curve in data {
-        let energy = curve[0];
+    for (energy, mut curve) in data {
+        
         // find max
-        let max = *curve.iter().skip(2).max().unwrap();
-        let inverse = 1.0 / max as f64;
-        let normed: Vec<_> = curve.into_iter()
-            .skip(2)    // skip energy and extinction time
-            .map(|val|
-                {
-                    val as f64 * inverse
-                }
-            ).collect();
-        vec[index(energy)].push(normed);
+        let mut max = curve[0];
+        for i in 1..curve.len(){
+            if max < curve[i]{
+                max = curve[i];
+            }
+        }
+        let inverse = 1.0 / max;
+        for i in 0..curve.len(){
+            curve[i] *= inverse;
+        }
+        vec[index(energy)].push(curve);
     }
     vec
 }
