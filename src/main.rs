@@ -16,8 +16,7 @@ fn main() {
 
 fn write_heatmap(opts: HeatmapOpts)
 {
-    let vec = parse_all_files(opts.clone());
-    let sorted_data = group_data(vec, opts.clone());
+    let sorted_data = parse_and_group_all_files( opts.clone());
     let matr =
     match opts.j  {
         0 => {

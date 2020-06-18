@@ -8,28 +8,6 @@ use rayon::prelude::*;
 use rayon;
 
 
-pub fn group_data(data: Vec<(usize, Vec<f64>)>, opts: HeatmapOpts) -> Vec<Vec<Vec<f64>>>
-{
-    let index = |energy| (energy - 1) / opts.bin_size;
-    let mut vec = vec![Vec::new(); opts.bins];
-    for (energy, mut curve) in data {
-        
-        // find max
-        let mut max = curve[0];
-        for i in 1..curve.len(){
-            if max < curve[i]{
-                max = curve[i];
-            }
-        }
-        let inverse = 1.0 / max;
-        for i in 0..curve.len(){
-            curve[i] *= inverse;
-        }
-        vec[index(energy)].push(curve);
-    }
-    vec
-}
-
 pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool, cutoff: usize) -> Stats
 {
     let mut diff_helper = Vec::new();
