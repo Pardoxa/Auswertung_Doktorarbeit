@@ -1,5 +1,6 @@
 use crate::HeatmapOpts;
 use crate::stats::*;
+use crate::stats::Data;
 use average::Mean;
 use std::iter;
 use indicatif::*;
@@ -8,18 +9,18 @@ use rayon::prelude::*;
 use rayon;
 
 
-pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool, cutoff: usize) -> Stats
+pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize) -> Stats
 {
     let mut diff_helper = Vec::new();
-    let mut stats = Stats::new(&data);
+    let mut stats = Stats::new(data.data());
 
     let mut workload = 0u64;
-    for i in 0..data.len(){
-        for j in 0..data.len(){
+    for i in data.range_iter(){
+        for j in data.range_iter(){
             if i < j{
                 continue;
             }
-            workload += u64::try_from(data[i].len()).unwrap() * u64::try_from(data[j].len()).unwrap();
+            workload += u64::try_from(data.get_len_at_index(i)).unwrap() * u64::try_from(data.get_len_at_index(j)).unwrap();
         }
     }
     let bar = if p_bar{
@@ -32,38 +33,33 @@ pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool, cutoff: usize) -> S
     };
      
     
-
-    for i in 0..data.len(){
-        if data[i].len() < cutoff {
+    let reduction = |a: f64, b: f64 | (a - b).abs();
+    for i in data.range_iter(){
+        if data.get_len_at_index(i) < cutoff {
             continue;
         }
-        for j in 0..data.len(){
+        for j in data.range_iter() {
             if i < j {
                 continue;
-            } else if data[j].len() < cutoff { // check that there is actually at least 2 curves available
+            } else if data.get_len_at_index(j) < cutoff { // check that there is actually at least 2 curves available
                 continue;
             }
             diff_helper.clear();
-            for (index_c1, c1) in data[i].iter().enumerate(){
-                for (index_c2, c2) in data[j].iter().enumerate(){
+            for index_c1 in 0..data.get_len_at_index(i){
+                for index_c2 in 0..data.get_len_at_index(j){
                     // do not compare curve with itself
                     if i == j && index_c1 == index_c2 {
                         continue;
                     }
-                    let mean: Mean =
-                        c1.iter()
-                            .zip(c2.iter())
-                            .map(
-                                |(val1, val2)| (val1 - val2).abs()
-                            ).collect();
-                    diff_helper.push(mean.mean());
+                    let mean = data.calc_mean(i, j, index_c1, index_c2, reduction);
+                    diff_helper.push(mean);
                 }
             }
             let iteration_count = diff_helper.len();
             let res: Mean = diff_helper.iter().collect();
             stats.push_unchecked(i, j, res.mean(), iteration_count);
             for b in bar.iter(){
-                b.inc(u64::try_from(data[i].len() * data[j].len()).unwrap());
+                b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
             }
             
         }
@@ -104,25 +100,25 @@ impl Default for CompareRes{
     }
 }
 
-pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_bar: bool, cutoff: usize) -> Stats
+pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutoff: usize) -> Stats
 {
-    let mut stats = Stats::new(&data);
+    let mut stats = Stats::new(data.data());
     
 
     // calculating workload, create jobs
     let mut workload = 0u64;
     let mut jobs = Vec::new();
-    for i in 0..data.len(){
-        if data[i].len() < cutoff{
+    for i in data.range_iter(){
+        if data.get_len_at_index(i) < cutoff{
             continue;
         }
-        for j in 0..data.len() {
+        for j in data.range_iter() {
             if i < j {
                 continue;
-            } else if data[j].len() < cutoff { // check that there is actually at least 2 curves available
+            } else if data.get_len_at_index(j) < cutoff { // check that there is actually at least 2 curves available
                 continue;
             }
-            let work = u64::try_from(data[i].len()).unwrap() * u64::try_from(data[j].len()).unwrap();
+            let work = u64::try_from(data.get_len_at_index(i)).unwrap() * u64::try_from(data.get_len_at_index(j)).unwrap();
             workload += work;
             jobs.push((i, j));
         }
@@ -139,6 +135,7 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_ba
     };
   
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threds).build().unwrap();
+    let reduction = |a: f64, b: f64 | (a - b).abs();
 
     let mut results = Vec::new();
     pool.install(||
@@ -147,41 +144,35 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_ba
             |(i, j)|
             {
                 
-                let len = data[i][0].len();
+                //let len = data.get_inside_len();
                 let mut iteration_count = 0;
                 let res: Mean = 
                 if i == j {
-                    (0..data[i].len())
-                        .flat_map(|k| iter::repeat(k).zip(0..data[j].len()))
+                    (0..data.get_len_at_index(i))
+                        .flat_map(|k| iter::repeat(k).zip(0..data.get_len_at_index(j)))
                         .filter(|&(k,l)| k != l)
                         .inspect(|_| iteration_count += 1)
                         .map(
                             |(k,l)| 
                             {
-                                let mean: Mean = (0..len)
-                                    .map(|index|  (data[i][k][index] - data[j][l][index]).abs() )
-                                    .collect();
-                                mean.mean()
+                                data.calc_mean(i, j, k, l, reduction)
                             }
                         ).collect()
                 } else {
-                    (0..data[i].len())
-                        .flat_map(|k| iter::repeat(k).zip(0..data[j].len()))
+                    (0..data.get_len_at_index(i))
+                        .flat_map(|k| iter::repeat(k).zip(0..data.get_len_at_index(j)))
                         .inspect(|_| iteration_count += 1)
                         .map(
                             |(k,l)| 
                             {
-                                let mean: Mean = (0..len)
-                                    .map(|index|  (data[i][k][index] - data[j][l][index]).abs() )
-                                    .collect();
-                                mean.mean()
+                                data.calc_mean(i, j, k, l, reduction)
                             }
                         ).collect()
                 };
                 
                    
                 for b in bar.iter(){
-                    b.inc(u64::try_from(data[i].len() * data[j].len()).unwrap());
+                    b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
                 }
                 
                 JobRes{

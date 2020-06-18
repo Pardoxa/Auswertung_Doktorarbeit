@@ -156,3 +156,115 @@ impl<W: Write> From<StatsWriter<W>> for StatsWriter<BufWriter<W>>{
         }
     }
 }
+
+
+
+use std::ops::*;
+use average::WeightedMean;
+use average::Mean;
+
+pub struct Data
+{
+    pub data: Vec<Vec<Vec<f64>>>,
+    pub inside_len: usize,
+    pub inside_len_set: bool,
+}
+
+impl Data{
+    pub fn new_from_heatmap_options(opts: &HeatmapOpts) -> Self {
+        let data = vec![Vec::new(); opts.bins];
+        Self{
+            data,
+            inside_len: 0,
+            inside_len_set: false,
+        }
+    }
+
+    pub fn is_inside_len_set(&self) -> bool
+    {
+        self.inside_len_set
+    }
+
+    pub fn get_inside_len(&self) -> usize
+    {
+        self.inside_len
+    }
+
+    pub fn set_inside_len(&mut self, len: usize){
+        self.inside_len = len;
+        self.inside_len_set = true;
+    }
+
+    pub fn push(&mut self, index: usize, v: Vec<f64>)
+    {
+        self.data[index].push(v);
+    }
+
+    pub fn data(&self) -> &Vec<Vec<Vec<f64>>>
+    {
+        &self.data
+    }
+
+    pub fn range_iter(&self) -> Range<usize>
+    {
+        0..self.data.len()
+    }
+
+    pub fn get_len_at_index(&self, index: usize) -> usize {
+        self.data[index].len()
+    }
+
+    /// calculates mean of (itemwise) reduction of two curves 
+    /// cuve1: data[i][k]
+    /// curve2: data[j][l] 
+    pub fn calc_mean<F>(&self, mut i: usize, mut j: usize, mut k: usize, mut l: usize, reduction: F) -> f64
+    where F: Fn(f64, f64) -> f64
+    {
+
+        let mut ex_i = self.data[i][k].len();
+        let mut ex_j = self.data[j][l].len();
+        
+        // calculate weighted mean where both have values
+        let mean: Mean = self.data[i][k].iter()
+            .zip(self.data[j][l].iter())
+            .map(|(a, b)| reduction(*a, *b))
+            .collect();
+        if ex_i == ex_j && ex_i == self.get_inside_len()
+        {
+            mean.mean()
+        } else {
+            
+            let mut w_mean: WeightedMean = WeightedMean::new();
+            let m_ex = ex_i.min(ex_j);
+            w_mean.add(mean.mean(), m_ex as f64);
+            if ex_i != ex_j {
+
+                if ex_j < ex_i {
+                    std::mem::swap(&mut ex_j, &mut ex_i);
+                    std::mem::swap(&mut i, &mut j);
+                    std::mem::swap(&mut k, &mut l);
+                }
+
+                // now ex_i is smaller than ex_j
+                let a = self.data[i][k][ex_i - 1];
+                let mean: Mean = (ex_i..ex_j).map(
+                    |index| 
+                    {
+                        let b = self.data[j][l][index];
+                        reduction(a, b)
+                    }
+                ).collect();
+                w_mean.add(mean.mean(), (ex_j - ex_i) as f64);
+
+            }
+            // at last repeat the last value as long as needed:
+            let i_last = self.data[i][k][ex_i - 1];
+            let j_last = self.data[j][l][ex_j - 1];
+            // use difference as weight
+            let weight = self.inside_len - ex_j;
+            w_mean.add(reduction(i_last, j_last), weight as f64);
+            w_mean.mean()
+        }
+
+    }
+}
