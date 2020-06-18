@@ -44,7 +44,57 @@ pub enum Opt
         #[structopt(long, default_value = "2")]
         /// min number of curves to be used in calculation
         cutoff: usize,
+
+        /// choose compare mode, default: 0
+        /// * 0: Abs
+        /// * 1: Sqrt
+        /// * 2: Cbrt
+        #[structopt(long, default_value = "0")]
+        mode: usize,
+
     },
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Mode
+{
+    Abs,
+    Sqrt,
+    Cbrt,
+}
+
+impl Mode {
+    pub fn get_fn(&self) -> fn(f64, f64) -> f64
+    {
+        match self {
+            Mode::Abs => mode_abs,
+            Mode::Sqrt => mode_sqrt,
+            Mode::Cbrt => mode_cbrt,
+        }
+    }
+}
+
+fn mode_abs(a: f64, b: f64) -> f64 {
+    (a - b).abs()
+}
+
+fn mode_sqrt(a: f64, b: f64) -> f64 {
+    mode_abs(a,b).sqrt()
+}
+
+fn mode_cbrt(a: f64, b: f64) -> f64 {
+    mode_abs(a,b).cbrt()
+}
+
+impl From<usize> for Mode{
+    fn from(num: usize) -> Self {
+        match num {
+            0 => Mode::Abs,
+            1 => Mode::Sqrt,
+            2 => Mode::Cbrt,
+            _ => panic!("invalid mode!"),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -58,12 +108,13 @@ pub struct HeatmapOpts{
     pub no_p_bar: bool,
     pub every: usize,
     pub cutoff: usize,
+    pub mode: Mode,
 }
 
 impl HeatmapOpts{
     pub fn generate_filename<D: std::fmt::Display>(&self, suffix: D) -> String
     {
-        format!("v{}N{}_b{}_e{}_{}.{}", env!("CARGO_PKG_VERSION"), self.n, self.bins, self.every, self.save, suffix)
+        format!("v{}_{:?}_N{}_b{}_e{}_{}.{}", env!("CARGO_PKG_VERSION"), self.mode, self.n, self.bins, self.every, self.save, suffix)
     }
 }
 
@@ -79,6 +130,7 @@ impl From<Opt> for HeatmapOpts{
                 no_p_bar,
                 every,
                 cutoff,
+                mode,
             } => {
                 if n % bins != 0 {
                     eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
@@ -94,6 +146,7 @@ impl From<Opt> for HeatmapOpts{
                     no_p_bar,
                     every,
                     cutoff,
+                    mode: mode.into(),
                 }
             }
         }
