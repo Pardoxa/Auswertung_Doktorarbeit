@@ -9,7 +9,8 @@ use rayon::prelude::*;
 use rayon;
 
 
-pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize) -> Stats
+pub fn compare_curves<F>(data: Data, p_bar: bool, cutoff: usize, reduction: F) -> Stats
+    where F: Fn(f64, f64) -> f64 + Copy
 {
     let mut diff_helper = Vec::new();
     let mut stats = Stats::new(data.data());
@@ -33,7 +34,7 @@ pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize) -> Stats
     };
      
     
-    let reduction = |a: f64, b: f64 | (a - b).abs();
+    
     for i in data.range_iter(){
         if data.get_len_at_index(i) < cutoff {
             continue;
@@ -100,7 +101,8 @@ impl Default for CompareRes{
     }
 }
 
-pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutoff: usize) -> Stats
+pub fn compare_curves_parallel<F>(data: Data, num_threds: usize, p_bar: bool, cutoff: usize, reduction: F) -> Stats
+where F: Fn(f64, f64) -> f64 + Copy + std::marker::Sync
 {
     let mut stats = Stats::new(data.data());
     
@@ -135,7 +137,7 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
     };
   
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threds).build().unwrap();
-    let reduction = |a: f64, b: f64 | (a - b).abs();
+
 
     let mut results = Vec::new();
     pool.install(||

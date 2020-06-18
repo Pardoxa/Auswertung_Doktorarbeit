@@ -16,6 +16,8 @@ fn main() {
 
 fn write_heatmap(opts: HeatmapOpts)
 {
+    //let reduction = |a:f64, b:f64| (a - b) * (a- b);
+    let reduction = |a: f64, b: f64 | (a - b).abs();
     let sorted_data = parse_and_group_all_files( opts.clone());
     let matr =
     match opts.j  {
@@ -23,8 +25,8 @@ fn write_heatmap(opts: HeatmapOpts)
             eprintln!("0 threds not allowed, use at least 1: INVALID j");
             panic!()
         },
-        1 => compare_curves(sorted_data, !opts.no_p_bar, opts.cutoff),
-        _ => compare_curves_parallel(sorted_data, opts.j, !opts.no_p_bar, opts.cutoff),
+        1 => compare_curves(sorted_data, !opts.no_p_bar, opts.cutoff, reduction),
+        _ => compare_curves_parallel(sorted_data, opts.j, !opts.no_p_bar, opts.cutoff, reduction),
     };
     write_matr(matr, opts);
 }

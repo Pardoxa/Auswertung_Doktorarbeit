@@ -26,6 +26,7 @@ where
         .filter(|line| 
             {
                 !line.trim_start().starts_with("#") // skip comments
+                && !line.is_empty()
             }
         ).step_by(every)
         .for_each( |line|
