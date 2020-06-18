@@ -64,6 +64,7 @@ pub enum Mode
 }
 
 impl Mode {
+    #[inline]
     pub fn get_fn(&self) -> fn(f64, f64) -> f64
     {
         match self {
@@ -74,14 +75,17 @@ impl Mode {
     }
 }
 
+#[inline]
 fn mode_abs(a: f64, b: f64) -> f64 {
     (a - b).abs()
 }
 
+#[inline]
 fn mode_sqrt(a: f64, b: f64) -> f64 {
     mode_abs(a,b).sqrt()
 }
 
+#[inline]
 fn mode_cbrt(a: f64, b: f64) -> f64 {
     mode_abs(a,b).cbrt()
 }
