@@ -4,6 +4,7 @@ mod parse_cmd;
 use parse_cmd::*;
 mod analyse;
 use analyse::*;
+mod stats;
 
 fn main() {
     let options = get_cmd_opts();
@@ -15,7 +16,6 @@ fn main() {
 
 fn write_heatmap(opts: HeatmapOpts)
 {
-    let save_file = opts.generate_filename();
     let vec = parse_all_files(opts.clone());
     let sorted_data = group_data(vec, opts.clone());
     let matr =
@@ -27,5 +27,5 @@ fn write_heatmap(opts: HeatmapOpts)
         1 => compare_curves(sorted_data, !opts.no_p_bar, opts.cutoff),
         _ => compare_curves_parallel(sorted_data, opts.j, !opts.no_p_bar, opts.cutoff),
     };
-    write_matr(matr, save_file);
+    write_matr(matr, opts);
 }

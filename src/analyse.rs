@@ -1,22 +1,12 @@
 use crate::HeatmapOpts;
+use crate::stats::*;
 use average::Mean;
-use std::path::Path;
-use std::fs::*;
-use std::io::*;
-use std::env;
 use std::iter;
 use indicatif::*;
 use std::convert::*;
 use rayon::prelude::*;
 use rayon;
 
-
-pub fn get_cmd_args() -> String 
-{
-    // get cmd arguments
-    let args: Vec<String> = env::args().collect();
-    args.join(" ")
-}
 
 pub fn group_data(data: Vec<(usize, Vec<f64>)>, opts: HeatmapOpts) -> Vec<Vec<Vec<f64>>>
 {
@@ -40,10 +30,10 @@ pub fn group_data(data: Vec<(usize, Vec<f64>)>, opts: HeatmapOpts) -> Vec<Vec<Ve
     vec
 }
 
-pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool, cutoff: usize) -> Vec<Vec<f64>>
+pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool, cutoff: usize) -> Stats
 {
     let mut diff_helper = Vec::new();
-    let mut matr = vec![ vec![f64::NAN; data.len()]; data.len()];
+    let mut stats = Stats::new(&data);
 
     let mut workload = 0u64;
     for i in 0..data.len(){
@@ -91,27 +81,54 @@ pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool, cutoff: usize) -> V
                     diff_helper.push(mean.mean());
                 }
             }
+            let iteration_count = diff_helper.len();
             let res: Mean = diff_helper.iter().collect();
-            matr[i][j] = res.mean();
-            matr[j][i] = matr[i][j];
+            stats.push_unchecked(i, j, res.mean(), iteration_count);
             for b in bar.iter(){
-                b.inc(u64::try_from(diff_helper.len()).unwrap());
+                b.inc(u64::try_from(data[i].len() * data[j].len()).unwrap());
             }
+            
         }
     }
-    matr
+    stats
     
 }
 
-pub struct MatRes{
+pub struct JobRes{
     pub mean: f64,
+    pub iterations: usize,
     pub i: usize,
     pub j: usize,
 }
 
-pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_bar: bool, cutoff: usize) -> Vec<Vec<f64>>
+
+#[derive(Copy, Clone)]
+pub struct CompareRes{
+    pub mean: f64,
+    pub iterations: usize,
+}
+
+impl From<JobRes> for CompareRes{
+    fn from(mat_res: JobRes) -> Self {
+        Self{
+            mean: mat_res.mean,
+            iterations: mat_res.iterations,
+        }
+    }
+}
+
+impl Default for CompareRes{
+    fn default() -> Self {
+        Self{
+            mean: f64::NAN,
+            iterations: 0,
+        }
+    }
+}
+
+pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_bar: bool, cutoff: usize) -> Stats
 {
-    let mut matr = vec![ vec![f64::NAN; data.len()]; data.len()];
+    let mut stats = Stats::new(&data);
     
 
     // calculating workload, create jobs
@@ -153,11 +170,13 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_ba
             {
                 
                 let len = data[i][0].len();
+                let mut iteration_count = 0;
                 let res: Mean = 
                 if i == j {
                     (0..data[i].len())
                         .flat_map(|k| iter::repeat(k).zip(0..data[j].len()))
                         .filter(|&(k,l)| k != l)
+                        .inspect(|_| iteration_count += 1)
                         .map(
                             |(k,l)| 
                             {
@@ -170,6 +189,7 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_ba
                 } else {
                     (0..data[i].len())
                         .flat_map(|k| iter::repeat(k).zip(0..data[j].len()))
+                        .inspect(|_| iteration_count += 1)
                         .map(
                             |(k,l)| 
                             {
@@ -186,10 +206,11 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_ba
                     b.inc(u64::try_from(data[i].len() * data[j].len()).unwrap());
                 }
                 
-                MatRes{
+                JobRes{
                     mean: res.mean(),
                     i,
                     j,
+                    iterations: iteration_count
                 }
             }
         ).collect_into_vec(&mut results);
@@ -197,30 +218,15 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_ba
     
 
     for r in results {
-        
-            matr[r.i][r.j] = r.mean;
-            matr[r.j][r.i] = r.mean;
+        stats.push_job_res_unchecked(r);
         
     }
-    matr
+    stats
     
 }
 
-pub fn write_matr<P: AsRef<Path>>(matr: Vec<Vec<f64>>, path: P)
+pub fn write_matr(stats: Stats, opts: HeatmapOpts)
 {
-    println!("Creating: {}", path.as_ref().to_str().unwrap());
-    let writer = File::create(path).unwrap();
-    let mut writer = BufWriter::new(writer);
-    writeln!(writer, "#{}", get_cmd_args()).unwrap();
-    writeln!(writer, "#{}", env::current_dir().unwrap().to_str().unwrap()).unwrap();
-    for line in matr{
-        for (index, val) in line.iter().enumerate(){
-            if index == 0 {
-                write!(writer, "{:e}", val).unwrap();
-            } else {
-                write!(writer, " {:e}", val).unwrap();
-            }
-        }
-        writeln!(writer).unwrap();
-    }
+    let mut stats_writer = StatsWriter::new_from_heatmap_opts(opts.clone());
+    stats_writer.write_stats(stats);
 }

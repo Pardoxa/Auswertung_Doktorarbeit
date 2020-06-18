@@ -61,9 +61,9 @@ pub struct HeatmapOpts{
 }
 
 impl HeatmapOpts{
-    pub fn generate_filename(&self) -> String
+    pub fn generate_filename<D: std::fmt::Display>(&self, suffix: D) -> String
     {
-        format!("v{}N{}_b{}_e{}_{}.dat", env!("CARGO_PKG_VERSION"), self.n, self.bins, self.every, self.save)
+        format!("v{}N{}_b{}_e{}_{}.{}", env!("CARGO_PKG_VERSION"), self.n, self.bins, self.every, self.save, suffix)
     }
 }
 
