@@ -40,6 +40,10 @@ pub enum Opt
         #[structopt(long, short)]
         /// use every nth step
         every: usize,
+
+        #[structopt(long, default_value = "2")]
+        /// min number of curves to be used in calculation
+        cutoff: usize,
     },
 }
 
@@ -53,6 +57,7 @@ pub struct HeatmapOpts{
     pub j: usize,
     pub no_p_bar: bool,
     pub every: usize,
+    pub cutoff: usize,
 }
 
 impl HeatmapOpts{
@@ -65,7 +70,16 @@ impl HeatmapOpts{
 impl From<Opt> for HeatmapOpts{
     fn from(opt: Opt) -> Self {
         match opt {
-            Opt::Heatmap{n, bins, files, save, j, no_p_bar, every} => {
+            Opt::Heatmap{
+                n, 
+                bins,
+                files,
+                save,
+                j,
+                no_p_bar,
+                every,
+                cutoff,
+            } => {
                 if n % bins != 0 {
                     eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
                     exit(-1);
@@ -79,6 +93,7 @@ impl From<Opt> for HeatmapOpts{
                     j,
                     no_p_bar,
                     every,
+                    cutoff,
                 }
             }
         }

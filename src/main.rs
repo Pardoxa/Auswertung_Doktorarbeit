@@ -24,8 +24,8 @@ fn write_heatmap(opts: HeatmapOpts)
             eprintln!("0 threds not allowed, use at least 1: INVALID j");
             panic!()
         },
-        1 => compare_curves(sorted_data, !opts.no_p_bar),
-        _ => compare_curves_parallel(sorted_data, opts.j, !opts.no_p_bar),
+        1 => compare_curves(sorted_data, !opts.no_p_bar, opts.cutoff),
+        _ => compare_curves_parallel(sorted_data, opts.j, !opts.no_p_bar, opts.cutoff),
     };
     write_matr(matr, save_file);
 }

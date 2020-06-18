@@ -4,6 +4,7 @@ use std::path::Path;
 use std::fs::*;
 use std::io::*;
 use std::env;
+use std::iter;
 use indicatif::*;
 use std::convert::*;
 use rayon::prelude::*;
@@ -39,17 +40,10 @@ pub fn group_data(data: Vec<(usize, Vec<f64>)>, opts: HeatmapOpts) -> Vec<Vec<Ve
     vec
 }
 
-pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool) -> Vec<Vec<f64>>
+pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool, cutoff: usize) -> Vec<Vec<f64>>
 {
-    let mut tmp_vec = Vec::new();
     let mut diff_helper = Vec::new();
-    let mut matr = Vec::with_capacity(data.len());
-    for i in 0..data.len(){
-        matr.push(Vec::with_capacity(data.len()));
-        for _ in 0..data.len(){
-            matr[i].push(0.0);
-        }
-    }
+    let mut matr = vec![ vec![f64::NAN; data.len()]; data.len()];
 
     let mut workload = 0u64;
     for i in 0..data.len(){
@@ -72,8 +66,13 @@ pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool) -> Vec<Vec<f64>>
     
 
     for i in 0..data.len(){
+        if data[i].len() < cutoff {
+            continue;
+        }
         for j in 0..data.len(){
             if i < j {
+                continue;
+            } else if data[j].len() < cutoff { // check that there is actually at least 2 curves available
                 continue;
             }
             diff_helper.clear();
@@ -83,13 +82,12 @@ pub fn compare_curves(data: Vec<Vec<Vec<f64>>>, p_bar: bool) -> Vec<Vec<f64>>
                     if i == j && index_c1 == index_c2 {
                         continue;
                     }
-                    tmp_vec.clear();
-                    tmp_vec.extend(
+                    let mean: Mean =
                         c1.iter()
                             .zip(c2.iter())
-                            .map(|(val1, val2)| (val1 - val2).abs())
-                    );
-                    let mean: Mean = tmp_vec.iter().collect();
+                            .map(
+                                |(val1, val2)| (val1 - val2).abs()
+                            ).collect();
                     diff_helper.push(mean.mean());
                 }
             }
@@ -111,23 +109,22 @@ pub struct MatRes{
     pub j: usize,
 }
 
-pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_bar: bool) -> Vec<Vec<f64>>
+pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_bar: bool, cutoff: usize) -> Vec<Vec<f64>>
 {
+    let mut matr = vec![ vec![f64::NAN; data.len()]; data.len()];
     
-    let mut matr = Vec::with_capacity(data.len());
-    for i in 0..data.len(){
-        matr.push(Vec::with_capacity(data.len()));
-        for _ in 0..data.len(){
-            matr[i].push(0.0);
-        }
-    }
 
     // calculating workload, create jobs
     let mut workload = 0u64;
     let mut jobs = Vec::new();
     for i in 0..data.len(){
-        for j in 0..data.len(){
-            if i < j{
+        if data[i].len() < cutoff{
+            continue;
+        }
+        for j in 0..data.len() {
+            if i < j {
+                continue;
+            } else if data[j].len() < cutoff { // check that there is actually at least 2 curves available
                 continue;
             }
             let work = u64::try_from(data[i].len()).unwrap() * u64::try_from(data[j].len()).unwrap();
@@ -154,50 +151,56 @@ pub fn compare_curves_parallel(data: Vec<Vec<Vec<f64>>>, num_threds: usize, p_ba
         jobs.into_par_iter().map(
             |(i, j)|
             {
-                let mut diff_helper = Vec::with_capacity(data[i].len() * data[j].len());
-                let mut tmp_vec = Vec::with_capacity(data[j].len());
-                let mut result = Vec::new();
                 
+                let len = data[i][0].len();
+                let res: Mean = 
+                if i == j {
+                    (0..data[i].len())
+                        .flat_map(|k| iter::repeat(k).zip(0..data[j].len()))
+                        .filter(|&(k,l)| k != l)
+                        .map(
+                            |(k,l)| 
+                            {
+                                let mean: Mean = (0..len)
+                                    .map(|index|  (data[i][k][index] - data[j][l][index]).abs() )
+                                    .collect();
+                                mean.mean()
+                            }
+                        ).collect()
+                } else {
+                    (0..data[i].len())
+                        .flat_map(|k| iter::repeat(k).zip(0..data[j].len()))
+                        .map(
+                            |(k,l)| 
+                            {
+                                let mean: Mean = (0..len)
+                                    .map(|index|  (data[i][k][index] - data[j][l][index]).abs() )
+                                    .collect();
+                                mean.mean()
+                            }
+                        ).collect()
+                };
                 
-                for (index_c1, c1) in data[i].iter().enumerate(){
-                    for (index_c2, c2) in data[j].iter().enumerate(){
-                        // do not compare curve with itself
-                        if i == j && index_c1 == index_c2 {
-                            continue;
-                        }
-                        tmp_vec.clear();
-                        tmp_vec.extend(
-                            c1.iter()
-                                .zip(c2.iter())
-                                .map(|(val1, val2)| (val1 - val2).abs())
-                        );
-                        let mean: Mean = tmp_vec.iter().collect();
-                        diff_helper.push(mean.mean());
-                    }
-                }
-                let res: Mean = diff_helper.iter().collect();
-                result.push(
-                    MatRes{
-                        mean: res.mean(),
-                        i,
-                        j,
-                    }
-                );
+                   
                 for b in bar.iter(){
-                    b.inc(u64::try_from(diff_helper.len()).unwrap());
+                    b.inc(u64::try_from(data[i].len() * data[j].len()).unwrap());
                 }
                 
-                result
+                MatRes{
+                    mean: res.mean(),
+                    i,
+                    j,
+                }
             }
         ).collect_into_vec(&mut results);
     });
     
 
-    for res in results{
-        for r in res{
+    for r in results {
+        
             matr[r.i][r.j] = r.mean;
             matr[r.j][r.i] = r.mean;
-        }
+        
     }
     matr
     
