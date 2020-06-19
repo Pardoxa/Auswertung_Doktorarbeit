@@ -4,6 +4,9 @@ use std::io::*;
 use std::fs::*;
 use std::env;
 use rgsl::statistics::correlation;
+use std::ops::*;
+use average::WeightedMean;
+use average::Mean;
 
 #[derive(Clone)]
 pub struct Stats{
@@ -160,11 +163,6 @@ impl<W: Write> From<StatsWriter<W>> for StatsWriter<BufWriter<W>>{
 }
 
 
-
-use std::ops::*;
-use average::WeightedMean;
-use average::Mean;
-
 pub struct Data
 {
     pub data: Vec<Vec<Vec<f64>>>,
@@ -215,6 +213,7 @@ impl Data{
     pub fn get_len_at_index(&self, index: usize) -> usize {
         self.data[index].len()
     }
+
 
     /// calculates mean of (itemwise) reduction of two curves 
     /// cuve1: data[i][k]

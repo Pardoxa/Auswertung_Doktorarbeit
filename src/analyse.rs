@@ -1,6 +1,6 @@
 use crate::HeatmapOpts;
 use crate::stats::*;
-use crate::stats::Data;
+use crate::parse_cmd::*;
 use average::Mean;
 use std::iter;
 use indicatif::*;
@@ -9,8 +9,7 @@ use rayon::prelude::*;
 use rayon;
 
 
-pub fn compare_curves<F>(data: Data, p_bar: bool, cutoff: usize, reduction: F) -> Stats
-    where F: Fn(f64, f64) -> f64 + Copy
+pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize, mode: Mode) -> Stats
 {
     let mut diff_helper = Vec::new();
     let mut stats = Stats::new(data.data());
@@ -46,14 +45,19 @@ pub fn compare_curves<F>(data: Data, p_bar: bool, cutoff: usize, reduction: F) -
                 continue;
             }
             diff_helper.clear();
-            for index_c1 in 0..data.get_len_at_index(i){
-                for index_c2 in 0..data.get_len_at_index(j){
+            for k in 0..data.get_len_at_index(i){
+                for l in 0..data.get_len_at_index(j){
                     // do not compare curve with itself
-                    if i == j && index_c1 == index_c2 {
+                    if i == j && k == l {
                         continue;
                     }
-                    let mean = data.calc_mean(i, j, index_c1, index_c2, reduction);
-                    diff_helper.push(mean);
+                    let reduced = match mode {
+                        Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
+                        Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
+                        Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
+                        Mode::Corr => data.calc_correlation(i, j, k, l),
+                    };
+                    diff_helper.push(reduced);
                 }
             }
             let iteration_count = diff_helper.len();
@@ -101,103 +105,22 @@ impl Default for CompareRes{
     }
 }
 
-pub fn compare_curves_parallel<F>(data: Data, num_threds: usize, p_bar: bool, cutoff: usize, reduction: F) -> Stats
-where F: Fn(f64, f64) -> f64 + Copy + std::marker::Sync
-{
-    let mut stats = Stats::new(data.data());
-    
-
-    // calculating workload, create jobs
-    let mut workload = 0u64;
-    let mut jobs = Vec::new();
-    for i in data.range_iter(){
-        if data.get_len_at_index(i) < cutoff{
-            continue;
-        }
-        for j in data.range_iter() {
-            if i < j {
-                continue;
-            } else if data.get_len_at_index(j) < cutoff { // check that there is actually at least 2 curves available
-                continue;
-            }
-            let work = u64::try_from(data.get_len_at_index(i)).unwrap() * u64::try_from(data.get_len_at_index(j)).unwrap();
-            workload += work;
-            jobs.push((i, j));
-        }
-
-    }
-
-    let bar = if p_bar{
-        let b = ProgressBar::new(workload);
-        b.set_style(ProgressStyle::default_bar()
-        .template("[{elapsed_precise} - {eta_precise}] {wide_bar}"));
-        Some(b)
-    }else{
-        None
-    };
-  
-    let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threds).build().unwrap();
-
-
-    let mut results = Vec::new();
-    pool.install(||
-    {
-        jobs.into_par_iter().map(
-            |(i, j)|
-            {
-                
-                //let len = data.get_inside_len();
-                let mut iteration_count = 0;
-                let res: Mean = 
-                if i == j {
-                    (0..data.get_len_at_index(i))
-                        .flat_map(|k| iter::repeat(k).zip(0..data.get_len_at_index(j)))
-                        .filter(|&(k,l)| k != l)
-                        .inspect(|_| iteration_count += 1)
-                        .map(
-                            |(k,l)| 
-                            {
-                                data.calc_mean(i, j, k, l, reduction)
-                            }
-                        ).collect()
-                } else {
-                    (0..data.get_len_at_index(i))
-                        .flat_map(|k| iter::repeat(k).zip(0..data.get_len_at_index(j)))
-                        .inspect(|_| iteration_count += 1)
-                        .map(
-                            |(k,l)| 
-                            {
-                                data.calc_mean(i, j, k, l, reduction)
-                            }
-                        ).collect()
-                };
-                
-                   
-                for b in bar.iter(){
-                    b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
-                }
-                
-                JobRes{
-                    mean: res.mean(),
-                    i,
-                    j,
-                    iterations: iteration_count
-                }
-            }
-        ).collect_into_vec(&mut results);
-    });
-    
-
-    for r in results {
-        stats.push_job_res_unchecked(r);
-        
-    }
-    stats
-    
+#[inline]
+fn mode_abs(a: f64, b: f64) -> f64 {
+    (a - b).abs()
 }
 
+#[inline]
+fn mode_sqrt(a: f64, b: f64) -> f64 {
+    mode_abs(a,b).sqrt()
+}
 
-pub fn correlate_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutoff: usize) -> Stats
+#[inline]
+fn mode_cbrt(a: f64, b: f64) -> f64 {
+    mode_abs(a,b).cbrt()
+}
+
+pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutoff: usize, mode: Mode) -> Stats
 {
     let mut stats = Stats::new(data.data());
     
@@ -234,6 +157,7 @@ pub fn correlate_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cut
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threds).build().unwrap();
 
 
+
     let mut results = Vec::new();
     pool.install(||
     {
@@ -252,7 +176,12 @@ pub fn correlate_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cut
                         .map(
                             |(k,l)| 
                             {
-                                data.calc_correlation(i, j, k, l)
+                                match mode {
+                                    Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
+                                    Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
+                                    Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
+                                    Mode::Corr => data.calc_correlation(i, j, k, l),
+                                }
                             }
                         ).collect()
                 } else {
@@ -262,7 +191,12 @@ pub fn correlate_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cut
                         .map(
                             |(k,l)| 
                             {
-                                data.calc_correlation(i, j, k, l)
+                                match mode {
+                                    Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
+                                    Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
+                                    Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
+                                    Mode::Corr => data.calc_correlation(i, j, k, l),
+                                }
                             }
                         ).collect()
                 };

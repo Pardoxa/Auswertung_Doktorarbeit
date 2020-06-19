@@ -67,33 +67,6 @@ pub enum Mode
     Corr
 }
 
-impl Mode {
-    #[inline]
-    pub fn get_fn(&self) -> fn(f64, f64) -> f64
-    {
-        match self {
-            Mode::Abs => mode_abs,
-            Mode::Sqrt => mode_sqrt,
-            Mode::Cbrt => mode_cbrt,
-            Mode::Corr => panic!("INVALID MODE!"),
-        }
-    }
-}
-
-#[inline]
-fn mode_abs(a: f64, b: f64) -> f64 {
-    (a - b).abs()
-}
-
-#[inline]
-fn mode_sqrt(a: f64, b: f64) -> f64 {
-    mode_abs(a,b).sqrt()
-}
-
-#[inline]
-fn mode_cbrt(a: f64, b: f64) -> f64 {
-    mode_abs(a,b).cbrt()
-}
 
 impl From<usize> for Mode{
     fn from(num: usize) -> Self {
