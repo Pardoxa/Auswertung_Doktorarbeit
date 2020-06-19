@@ -3,6 +3,8 @@ use crate::*;
 use std::io::*;
 use std::fs::*;
 use std::env;
+use rgsl::statistics::correlation;
+
 #[derive(Clone)]
 pub struct Stats{
     mean: Vec<Vec<f64>>,
@@ -265,6 +267,20 @@ impl Data{
             w_mean.add(reduction(i_last, j_last), weight as f64);
             w_mean.mean()
         }
+
+    }
+
+
+    pub fn calc_correlation(&self, i: usize, j: usize, k: usize, l: usize) -> f64
+    {
+        
+        correlation(
+            &self.data[i][k],
+            1,
+            &self.data[j][l],
+            1,
+            self.data[i][k].len()
+        )
 
     }
 }

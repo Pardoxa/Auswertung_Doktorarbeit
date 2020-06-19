@@ -2,6 +2,7 @@ use structopt::StructOpt;
 use std::convert::*;
 use std::process::exit;
 use std::collections::*;
+use crate::parse_files::*;
 
 pub fn get_cmd_opts() -> Opt
 {
@@ -50,6 +51,7 @@ pub enum Opt
         /// * 0: Abs
         /// * 1: Sqrt
         /// * 2: Cbrt
+        /// * 3: Corr
         #[structopt(long, default_value = "0")]
         mode: usize,
 
@@ -62,6 +64,7 @@ pub enum Mode
     Abs,
     Sqrt,
     Cbrt,
+    Corr
 }
 
 impl Mode {
@@ -72,6 +75,7 @@ impl Mode {
             Mode::Abs => mode_abs,
             Mode::Sqrt => mode_sqrt,
             Mode::Cbrt => mode_cbrt,
+            Mode::Corr => panic!("INVALID MODE!"),
         }
     }
 }
@@ -97,6 +101,7 @@ impl From<usize> for Mode{
             0 => Mode::Abs,
             1 => Mode::Sqrt,
             2 => Mode::Cbrt,
+            3 => Mode::Corr,
             _ => panic!("invalid mode!"),
         }
     }
@@ -115,6 +120,7 @@ pub struct HeatmapOpts{
     pub cutoff: usize,
     pub mode: Mode,
     pub suffix: String,
+    pub data_mode: DataMode,
 }
 
 impl HeatmapOpts{
@@ -192,6 +198,10 @@ impl From<Opt> for HeatmapOpts{
                             .join("_")
                     }
                 };
+                let data_mode = match mode{
+                    0..=2 => DataMode::Sparse,
+                    _ => DataMode::Naive,
+                };
                 Self{
                     n,
                     bins,
@@ -203,7 +213,8 @@ impl From<Opt> for HeatmapOpts{
                     every,
                     cutoff,
                     mode: mode.into(),
-                    suffix
+                    suffix,
+                    data_mode
                 }
             }
         }

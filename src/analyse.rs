@@ -196,6 +196,101 @@ where F: Fn(f64, f64) -> f64 + Copy + std::marker::Sync
     
 }
 
+
+pub fn correlate_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutoff: usize) -> Stats
+{
+    let mut stats = Stats::new(data.data());
+    
+
+    // calculating workload, create jobs
+    let mut workload = 0u64;
+    let mut jobs = Vec::new();
+    for i in data.range_iter(){
+        if data.get_len_at_index(i) < cutoff{
+            continue;
+        }
+        for j in data.range_iter() {
+            if i < j {
+                continue;
+            } else if data.get_len_at_index(j) < cutoff { // check that there is actually at least 2 curves available
+                continue;
+            }
+            let work = u64::try_from(data.get_len_at_index(i)).unwrap() * u64::try_from(data.get_len_at_index(j)).unwrap();
+            workload += work;
+            jobs.push((i, j));
+        }
+
+    }
+
+    let bar = if p_bar{
+        let b = ProgressBar::new(workload);
+        b.set_style(ProgressStyle::default_bar()
+        .template("[{elapsed_precise} - {eta_precise}] {wide_bar}"));
+        Some(b)
+    }else{
+        None
+    };
+  
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threds).build().unwrap();
+
+
+    let mut results = Vec::new();
+    pool.install(||
+    {
+        jobs.into_par_iter().map(
+            |(i, j)|
+            {
+                
+                //let len = data.get_inside_len();
+                let mut iteration_count = 0;
+                let res: Mean = 
+                if i == j {
+                    (0..data.get_len_at_index(i))
+                        .flat_map(|k| iter::repeat(k).zip(0..data.get_len_at_index(j)))
+                        .filter(|&(k,l)| k != l)
+                        .inspect(|_| iteration_count += 1)
+                        .map(
+                            |(k,l)| 
+                            {
+                                data.calc_correlation(i, j, k, l)
+                            }
+                        ).collect()
+                } else {
+                    (0..data.get_len_at_index(i))
+                        .flat_map(|k| iter::repeat(k).zip(0..data.get_len_at_index(j)))
+                        .inspect(|_| iteration_count += 1)
+                        .map(
+                            |(k,l)| 
+                            {
+                                data.calc_correlation(i, j, k, l)
+                            }
+                        ).collect()
+                };
+                
+                   
+                for b in bar.iter(){
+                    b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
+                }
+                
+                JobRes{
+                    mean: res.mean(),
+                    i,
+                    j,
+                    iterations: iteration_count
+                }
+            }
+        ).collect_into_vec(&mut results);
+    });
+    
+
+    for r in results {
+        stats.push_job_res_unchecked(r);
+        
+    }
+    stats
+    
+}
+
 pub fn write_matr(stats: Stats, opts: HeatmapOpts)
 {
     let mut stats_writer = StatsWriter::new_from_heatmap_opts(opts.clone());

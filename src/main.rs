@@ -28,7 +28,11 @@ fn write_heatmap(opts: HeatmapOpts)
             panic!()
         },
         1 => compare_curves(sorted_data, !opts.no_p_bar, opts.cutoff, opts.mode.get_fn()),
-        _ => compare_curves_parallel(sorted_data, opts.j, !opts.no_p_bar, opts.cutoff, opts.mode.get_fn()),
+        _ => match opts.mode {
+            Mode::Corr => correlate_curves_parallel(sorted_data, opts.j, !opts.no_p_bar, opts.cutoff),
+            _ => compare_curves_parallel(sorted_data, opts.j, !opts.no_p_bar, opts.cutoff, opts.mode.get_fn()),
+        }
+         
     };
     write_matr(matr, opts);
 }
