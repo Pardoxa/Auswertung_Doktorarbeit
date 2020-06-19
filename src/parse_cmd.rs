@@ -1,6 +1,7 @@
 use structopt::StructOpt;
 use std::convert::*;
 use std::process::exit;
+use std::collections::*;
 
 pub fn get_cmd_opts() -> Opt
 {
@@ -26,7 +27,7 @@ pub enum Opt
         files: String,
 
         /// save file to create
-        #[structopt(long)]
+        #[structopt(long, default_value= "")]
         save: String,
 
         #[structopt(short)]
@@ -113,12 +114,54 @@ pub struct HeatmapOpts{
     pub every: usize,
     pub cutoff: usize,
     pub mode: Mode,
+    pub suffix: String,
 }
 
 impl HeatmapOpts{
-    pub fn generate_filename<D: std::fmt::Display>(&self, suffix: D) -> String
+    pub fn generate_filename<D: std::fmt::Display>(&self, extension: D) -> String
     {
-        format!("v{}_{:?}_N{}_b{}_e{}_{}.{}", env!("CARGO_PKG_VERSION"), self.mode, self.n, self.bins, self.every, self.save, suffix)
+        format!(
+            "v{}_{:?}_N{}_b{}_e{}_{}.{}.{}", 
+            env!("CARGO_PKG_VERSION"),
+            self.mode,
+            self.n,
+            self.bins,
+            self.every,
+            self.save,
+            &self.suffix,
+            extension
+        )
+    }
+}
+
+pub fn get_suffix<S: AsRef<str>>(pattern: S) -> Result<String, HashSet<String>>
+{
+    let list: HashSet<_> = glob::glob(pattern.as_ref())
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(
+            |item| 
+            {
+                let s = item.into_os_string()
+                        .into_string()
+                        .unwrap();
+                s.rsplit(".")
+                    .filter(|&suf| suf != "gz")
+                    .next()
+                    .unwrap()
+                    .to_owned()
+                    
+            }
+        )
+        .collect();
+    if list.len() == 1 {
+        Ok(
+            list.into_iter()
+                .next()
+                .unwrap()
+        )
+    }else{
+        Err(list)
     }
 }
 
@@ -140,6 +183,15 @@ impl From<Opt> for HeatmapOpts{
                     eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
                     exit(-1);
                 }
+                let suffix = match get_suffix(&files){
+                    Ok(suf) => suf,
+                    Err(set) => {
+                        eprintln!("WARNING: Sufix do not match! Found {:?}", set);
+                        set.into_iter()
+                            .collect::<Vec<String>>()
+                            .join("_")
+                    }
+                };
                 Self{
                     n,
                     bins,
@@ -151,6 +203,7 @@ impl From<Opt> for HeatmapOpts{
                     every,
                     cutoff,
                     mode: mode.into(),
+                    suffix
                 }
             }
         }
