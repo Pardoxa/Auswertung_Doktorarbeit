@@ -2,7 +2,6 @@ use crate::HeatmapOpts;
 use crate::stats::*;
 use crate::parse_cmd::*;
 use average::Mean;
-use std::iter;
 use indicatif::*;
 use std::convert::*;
 use rayon::prelude::*;
@@ -167,38 +166,35 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
                 
                 //let len = data.get_inside_len();
                 let mut iteration_count = 0;
-                let res: Mean = 
+                let mut sum = 0.0;
                 if i == j {
-                    (0..data.get_len_at_index(i))
-                        .flat_map(|k| iter::repeat(k).zip(0..data.get_len_at_index(j)))
-                        .filter(|&(k,l)| k != l)
-                        .inspect(|_| iteration_count += 1)
-                        .map(
-                            |(k,l)| 
-                            {
-                                match mode {
+                    for k in 0..data.get_len_at_index(i) {
+                        for l in 0..data.get_len_at_index(j){
+                            if k != l {
+                                iteration_count += 1;
+                                sum += match mode {
                                     Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
                                     Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
                                     Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
                                     Mode::Corr => data.calc_correlation(i, j, k, l),
-                                }
+                                };
                             }
-                        ).collect()
+                        }
+                    }
                 } else {
-                    (0..data.get_len_at_index(i))
-                        .flat_map(|k| iter::repeat(k).zip(0..data.get_len_at_index(j)))
-                        .inspect(|_| iteration_count += 1)
-                        .map(
-                            |(k,l)| 
-                            {
-                                match mode {
-                                    Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
-                                    Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
-                                    Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
-                                    Mode::Corr => data.calc_correlation(i, j, k, l),
-                                }
-                            }
-                        ).collect()
+                    for k in 0..data.get_len_at_index(i) {
+                        iteration_count += data.get_len_at_index(j);
+                        for l in 0..data.get_len_at_index(j){
+                            
+                            sum += match mode {
+                                Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
+                                Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
+                                Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
+                                Mode::Corr => data.calc_correlation(i, j, k, l),
+                            };
+                            
+                        }
+                    }
                 };
                 
                    
@@ -207,7 +203,7 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
                 }
                 
                 JobRes{
-                    mean: res.mean(),
+                    mean: sum / iteration_count as f64,
                     i,
                     j,
                     iterations: iteration_count
