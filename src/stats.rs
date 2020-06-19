@@ -5,8 +5,6 @@ use std::fs::*;
 use std::env;
 use rgsl::statistics::correlation;
 use std::ops::*;
-use average::WeightedMean;
-use average::Mean;
 
 #[derive(Clone)]
 pub struct Stats{
@@ -218,55 +216,10 @@ impl Data{
     /// calculates mean of (itemwise) reduction of two curves 
     /// cuve1: data[i][k]
     /// curve2: data[j][l] 
-    pub fn calc_mean<F>(&self, mut i: usize, mut j: usize, mut k: usize, mut l: usize, reduction: F) -> f64
+    pub fn calc_mean<F>(&self, i: usize, j: usize, k: usize, l: usize, reduction: F) -> f64
     where F: Fn(f64, f64) -> f64
     {
-
-        let mut ex_i = self.data[i][k].len();
-        let mut ex_j = self.data[j][l].len();
-        
-        // calculate weighted mean where both have values
-        let mean: Mean = self.data[i][k].iter()
-            .zip(self.data[j][l].iter())
-            .map(|(a, b)| reduction(*a, *b))
-            .collect();
-        if ex_i == ex_j && ex_i == self.get_inside_len()
-        {
-            mean.mean()
-        } else {
-            
-            let mut w_mean: WeightedMean = WeightedMean::new();
-            let m_ex = ex_i.min(ex_j);
-            w_mean.add(mean.mean(), m_ex as f64);
-            if ex_i != ex_j {
-
-                if ex_j < ex_i {
-                    std::mem::swap(&mut ex_j, &mut ex_i);
-                    std::mem::swap(&mut i, &mut j);
-                    std::mem::swap(&mut k, &mut l);
-                }
-
-                // now ex_i is smaller than ex_j
-                let a = self.data[i][k][ex_i - 1];
-                let mean: Mean = (ex_i..ex_j).map(
-                    |index| 
-                    {
-                        let b = self.data[j][l][index];
-                        reduction(a, b)
-                    }
-                ).collect();
-                w_mean.add(mean.mean(), (ex_j - ex_i) as f64);
-
-            }
-            // at last repeat the last value as long as needed:
-            let i_last = self.data[i][k][ex_i - 1];
-            let j_last = self.data[j][l][ex_j - 1];
-            // use difference as weight
-            let weight = self.inside_len - ex_j;
-            w_mean.add(reduction(i_last, j_last), weight as f64);
-            w_mean.mean()
-        }
-
+        reduce(&self.data[i][k], &self.data[j][l], self.get_inside_len(), reduction)
     }
 
 
@@ -281,5 +234,52 @@ impl Data{
             self.data[i][k].len()
         )
 
+    }
+}
+
+/// calculates mean of (itemwise) reduction of two curves 
+/// cuve1: data[i][k]
+/// curve2: data[j][l] 
+pub fn reduce<F>(arr1: &[f64], arr2: &[f64], len: usize, reduction: F) -> f64
+where F: Fn(f64, f64) -> f64
+{
+    let ex_1 = arr1.len();
+    let ex_2 = arr2.len();
+    let counter = ex_1.min(ex_2);
+    
+    // calculate weighted mean where both have values
+    let mut sum = 0.0;
+    for i in 0..counter{
+        sum += reduction(arr1[i], arr2[i]);
+    }
+    
+    if ex_1 == ex_2 && ex_1 == len
+    {
+        sum / counter as f64
+    } else {
+        
+        if ex_1 != ex_2 {
+            if ex_2 < ex_1 {
+                // now ex_2 is smaller than ex_1
+                let a = arr2[ex_2 - 1];
+                for i in ex_2..ex_1 {
+                    sum += reduction(a, arr1[i]);
+                }
+            }else {
+                // now ex_1 is smaller than ex_2
+                let a = arr1[ex_1 - 1];
+                for i in ex_1..ex_2 {
+                    sum += reduction(a, arr2[i]);
+                }
+            }
+            
+        }
+        // at last repeat the last value as long as needed:
+        let last_1 = arr1[ex_1 - 1];
+        let last_2 = arr2[ex_2 - 1];
+        // use difference as weight
+        let weight = len - ex_2.max(ex_1);
+        sum += reduction(last_1, last_2) * weight as f64;
+        sum / len as f64
     }
 }
