@@ -4,6 +4,8 @@ use std::process::exit;
 use std::collections::*;
 use crate::parse_files::*;
 
+const COMPRESSION_SUFFIX: [&str; 2]= ["gz", "xz"];
+
 pub fn get_cmd_opts() -> Opt
 {
     Opt::from_args()
@@ -125,7 +127,7 @@ pub fn get_suffix<S: AsRef<str>>(pattern: S) -> Result<String, HashSet<String>>
                         .into_string()
                         .unwrap();
                 s.rsplit(".")
-                    .filter(|&suf| suf != "gz")
+                    .filter(|suf| !COMPRESSION_SUFFIX.contains(suf))
                     .next()
                     .unwrap()
                     .to_owned()

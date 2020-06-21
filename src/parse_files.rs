@@ -6,6 +6,7 @@ use glob;
 use crate::parse_cmd::*;
 use crate::stats::Data;
 use std::result::Result;
+use lzma::LzmaReader;
 
 #[derive(Debug, Copy, Clone)]
 pub enum DataMode{
@@ -136,6 +137,8 @@ pub fn parse_and_group_all_files(opts: HeatmapOpts) -> Data
     data
 }
 
+
+
 pub fn parse_and_group_file<P, F>
 (
     filename: P,
@@ -147,22 +150,34 @@ pub fn parse_and_group_file<P, F>
 where P: AsRef<Path>,
     F: Fn(usize) -> usize,
 {
-    let is_gz = filename.as_ref()
-        .to_str()
+    let ending = filename.as_ref()
+        .extension()
         .unwrap()
-        .ends_with("gz");
-    let file = File::open(filename).unwrap();
-    if is_gz {
-        let decoder = GzDecoder::new(file);
-        match data_mode {
-           DataMode::Sparse => parse_and_group(decoder, every, data, index_func),
-           DataMode::Naive => parse_and_group_naive(decoder, every, data, index_func),
-        };
-    } else 
-    {
-        match data_mode {
-            DataMode::Sparse => parse_and_group(file, every, data, index_func),
-            DataMode::Naive => parse_and_group_naive(file, every, data, index_func),
-        };
+        .to_str()
+        .unwrap();
+    let file = File::open(&filename).unwrap();
+
+    match ending {
+        "gz" => {
+            let decoder = GzDecoder::new(file);
+            match data_mode {
+               DataMode::Sparse => parse_and_group(decoder, every, data, index_func),
+               DataMode::Naive => parse_and_group_naive(decoder, every, data, index_func),
+            };
+        },
+        "xz" => {
+            let decoder = LzmaReader::new_decompressor(file).unwrap();
+            match data_mode {
+                DataMode::Sparse => parse_and_group(decoder, every, data, index_func),
+                DataMode::Naive => parse_and_group_naive(decoder, every, data, index_func),
+            };
+        },
+        _ => {
+            match data_mode {
+                DataMode::Sparse => parse_and_group(file, every, data, index_func),
+                DataMode::Naive => parse_and_group_naive(file, every, data, index_func),
+            };
+        }
     }
+
 }
