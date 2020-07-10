@@ -27,7 +27,7 @@ fn norm_vec(vec: &mut Vec<f64>){
     }
 }
 
-fn parse_helper(slice: &str) -> Vec<f64>
+pub(crate) fn parse_helper(slice: &str) -> Vec<f64>
 {
     slice
         .split(" ")
@@ -39,7 +39,7 @@ fn parse_helper(slice: &str) -> Vec<f64>
 fn parse_and_group<R, F>
 (
     reader: R, 
-    every: usize, 
+    every: usize,
     data: &mut Data,
     index_func: F,
 )

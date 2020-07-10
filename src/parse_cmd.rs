@@ -3,6 +3,7 @@ use std::convert::*;
 use std::process::exit;
 use std::collections::*;
 use crate::parse_files::*;
+use crate::histogram::*;
 
 const COMPRESSION_SUFFIX: [&str; 2]= ["gz", "xz"];
 
@@ -56,8 +57,41 @@ pub enum Opt
         /// * 3: Corr
         #[structopt(long, default_value = "0")]
         mode: usize,
-
     },
+    Histogram {
+        /// number of nodes
+        #[structopt(long,short)]
+        n: usize,
+
+        /// number of samples
+        #[structopt(long, short)]
+        bins: usize,
+
+        /// number of samples
+        #[structopt(long, short)]
+        files: String,
+
+        /// save file to create
+        #[structopt(long, default_value= "")]
+        save: String,
+
+        #[structopt(short)]
+        /// number of threads to use
+        j: usize,
+
+        #[structopt(long)]
+        /// hide progress bar
+        no_p_bar: bool,
+
+        #[structopt(long, short)]
+        /// use every nth step
+        every: usize,
+
+        /// What function to use
+        /// valid: indexmax, valmax
+        #[structopt(long)]
+        hist_reduce: HistReduce
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -78,6 +112,82 @@ impl From<usize> for Mode{
             2 => Mode::Cbrt,
             3 => Mode::Corr,
             _ => panic!("invalid mode!"),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct HistogramOpts{
+    pub n: usize,
+    pub bins: usize,
+    pub files: String,
+    pub bin_size: usize,
+    pub save: String,
+    pub j: usize,
+    pub no_p_bar: bool,
+    pub every: usize,
+    pub suffix: String,
+    pub hist_reduce: HistReduce,
+}
+
+impl HistogramOpts{
+    pub fn generate_filename<D: std::fmt::Display>(&self, extension: D) -> String
+    {
+        format!(
+            "v{}_{:?}_N{}_b{}_e{}_{}.{}.{}", 
+            env!("CARGO_PKG_VERSION"),
+            self.hist_reduce,
+            self.n,
+            self.bins,
+            self.every,
+            self.save,
+            &self.suffix,
+            extension
+        )
+    }
+}
+
+impl From<Opt> for HistogramOpts{
+    fn from(opt: Opt) -> Self {
+        match opt {
+            Opt::Histogram {
+                n, 
+                bins,
+                files,
+                save,
+                j,
+                no_p_bar,
+                every,
+                hist_reduce
+            } => {
+                if n % bins != 0 {
+                    eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
+                    exit(-1);
+                }
+                let suffix = match get_suffix(&files){
+                    Ok(suf) => suf,
+                    Err(set) => {
+                        eprintln!("WARNING: Sufix do not match! Found {:?}", set);
+                        set.into_iter()
+                            .collect::<Vec<String>>()
+                            .join("_")
+                    }
+                };
+                
+                HistogramOpts{
+                    n,
+                    bins,
+                    files,
+                    bin_size: n / bins,
+                    save,
+                    j,
+                    no_p_bar,
+                    every,
+                    hist_reduce,
+                    suffix,
+                }
+            },
+            _ => unreachable!()
         }
     }
 }
@@ -191,7 +301,8 @@ impl From<Opt> for HeatmapOpts{
                     suffix,
                     data_mode
                 }
-            }
+            },
+            _ => unreachable!()
         }
     }
 }

@@ -7,7 +7,6 @@ use std::convert::*;
 use rayon::prelude::*;
 use rayon;
 
-
 pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize, mode: Mode) -> Stats
 {
     let mut diff_helper = Vec::new();
