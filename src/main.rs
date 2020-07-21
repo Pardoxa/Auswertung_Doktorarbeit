@@ -9,11 +9,14 @@ use histogram::*;
 use std::io::*;
 use std::fs::*;
 
+mod heatmap2;
+
 fn main() {
     let options = get_cmd_opts();
     match options {
         Opt::Heatmap{..} => write_heatmap(options.into()),
         Opt::Histogram{..} => write_histogram(options.into()),
+        Opt::Heatmap2{..} => write_heatmap2(options.into())
     };
 }
 
@@ -51,5 +54,29 @@ fn write_histogram(opts: HistogramOpts)
     for (index, (mean, error)) in hist.into_iter().enumerate()
     {
         writeln!(writer, "{} {:e} {:e}", index, mean, error).unwrap();
+    }
+}
+
+fn write_heatmap2(opts: Heatmap2Opts)
+{
+    let filename = opts.generate_filename(".heatmap2");
+
+    let heatmap = heatmap2::parse_and_count_all_files(opts);
+    let inner_len = heatmap.inner_len();
+    let outer_len = heatmap.outer_len();
+    
+    let heatmap = heatmap.create_heatmap();
+
+    let file = File::create(filename).unwrap();
+    let mut writer = BufWriter::new(file);
+
+    writeln!(writer, "#{}", stats::get_cmd_args()).unwrap();
+    // mirror
+    for inner in 0..inner_len
+    {
+        for outer in 0..outer_len - 1{
+            write!(writer, "{} ", heatmap[outer][inner]).unwrap();
+        }
+        writeln!(writer, "{}", heatmap[outer_len-1][inner]).unwrap();
     }
 }

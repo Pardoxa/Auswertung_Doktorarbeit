@@ -1,6 +1,6 @@
 [package]
 name = "sir_compare_r"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Yannick Feld <yannick.feld@uol.de>"]
 edition = "2018"
 
@@ -15,7 +15,7 @@ indicatif = {version = "0.15", features = ["improved_unicode", "rayon"]}
 rayon = "1.3"
 GSL = "1.1.0"
 rust-lzma = "0.5.1"
-sampling = {git = "https://github.com/Pardoxa/sampling.git" }
+sampling = {git = "https://github.com/Pardoxa/sampling.git", rev = "71613c63d49260509382abbc40f8a5039890ed16" }
 rand_pcg = { version = "0.2.1"}
 rand = "0.7"
 num-traits = "0.2.12"

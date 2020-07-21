@@ -67,7 +67,7 @@ pub enum Opt
         #[structopt(long, short)]
         bins: usize,
 
-        /// number of samples
+        /// filenames
         #[structopt(long, short)]
         files: String,
 
@@ -91,6 +91,50 @@ pub enum Opt
         /// valid: indexmax, valmax
         #[structopt(long)]
         hist_reduce: HistReduce
+    },
+    Heatmap2 {
+        /// number of nodes
+        #[structopt(long,short)]
+        n: usize,
+
+        #[structopt(long, default_value="0")]
+        /// inner left
+        left: f64,
+
+        #[structopt(long)]
+        /// inner right
+        right: f64,
+
+        #[structopt(long)]
+        /// number of inner bins
+        bins_inner: usize,
+
+        #[structopt(long)]
+        /// number of outer bins
+        bins_outer: usize,
+
+        /// filenames
+        #[structopt(long, short)]
+        files: String,
+
+        /// save file to create
+        #[structopt(long, default_value= "")]
+        save: String,
+
+        #[structopt(long)]
+        /// hide progress bar
+        no_p_bar: bool,
+
+        #[structopt(long, short)]
+        /// use every nth step
+        every: usize,
+
+
+        /// What function to use
+        /// valid: indexmax, valmax
+        #[structopt(long)]
+        hist_reduce: HistReduce,
+        
     }
 }
 
@@ -112,6 +156,91 @@ impl From<usize> for Mode{
             2 => Mode::Cbrt,
             3 => Mode::Corr,
             _ => panic!("invalid mode!"),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Heatmap2Opts
+{
+    pub n: usize,
+    pub bins_outer: usize,
+    pub left: f64,
+    pub right: f64,
+    pub bins_inner: usize,
+    pub files: String,
+    pub save: String,
+    pub no_p_bar: bool,
+    pub every: usize,
+    pub suffix: String,
+    pub hist_reduce: HistReduce,
+}
+
+impl Heatmap2Opts{
+    pub fn generate_filename<D: std::fmt::Display>(&self, extension: D) -> String
+    {
+        format!(
+            "v{}_{:?}_N{}_b{}_l{}_r{}_{}_e{}_{}.{}.{}", 
+            env!("CARGO_PKG_VERSION"),
+            self.hist_reduce,
+            self.n,
+            self.bins_outer,
+            self.left,
+            self.right,
+            self.bins_inner,
+            self.every,
+            self.save,
+            &self.suffix,
+            extension
+        )
+    }
+}
+
+
+impl From<Opt> for Heatmap2Opts{
+    fn from(opt: Opt) -> Self {
+        match opt {
+            Opt::Heatmap2 {
+                n, 
+                bins_outer,
+                left, 
+                right,
+                bins_inner,
+                files,
+                save,
+                no_p_bar,
+                every,
+                hist_reduce
+            } => {
+                if n % bins_outer != 0 {
+                    eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins_outer, n % bins_outer);
+                    exit(-1);
+                }
+                let suffix = match get_suffix(&files){
+                    Ok(suf) => suf,
+                    Err(set) => {
+                        eprintln!("WARNING: Sufix do not match! Found {:?}", set);
+                        set.into_iter()
+                            .collect::<Vec<String>>()
+                            .join("_")
+                    }
+                };
+                
+                Heatmap2Opts{
+                    n,
+                    bins_inner,
+                    bins_outer,
+                    right,
+                    left,
+                    files,
+                    save,
+                    no_p_bar,
+                    every,
+                    hist_reduce,
+                    suffix,
+                }
+            },
+            _ => unreachable!()
         }
     }
 }

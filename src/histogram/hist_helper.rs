@@ -5,6 +5,7 @@ use std::str::FromStr;
 pub enum HistReduce{
     IndexMax,
     ValMax,
+    Median,
 }
 
 impl HistReduce {
@@ -13,6 +14,14 @@ impl HistReduce {
         match self {
             HistReduce::IndexMax => max_index(arr) as f64,
             HistReduce::ValMax => max_val(arr),
+            HistReduce::Median => {
+                let mid = arr.len() / 2;
+                let mut clone = arr.to_vec();
+                clone.sort_unstable_by(
+                    |a,b| a.partial_cmp(b).unwrap()
+                );
+                clone[mid]
+            }
         }
     }
 }
@@ -24,6 +33,7 @@ impl FromStr for HistReduce {
         match s.to_lowercase().as_str() {
             "indexmax" | "index_max" => Ok(HistReduce::IndexMax),
             "val_max" | "valmax" => Ok(HistReduce::ValMax),
+            "median" => Ok(HistReduce::Median),
             _ => Err("Invalid HistReduce requested")
             }
     }
