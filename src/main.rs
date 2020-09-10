@@ -8,6 +8,7 @@ mod histogram;
 use histogram::*;
 use std::io::*;
 use std::fs::*;
+use net_ensembles::sampling::*;
 
 mod heatmap2;
 
@@ -62,21 +63,23 @@ fn write_heatmap2(opts: Heatmap2Opts)
     let filename = opts.generate_filename(".heatmap2");
 
     let heatmap = heatmap2::parse_and_count_all_files(opts);
-    let inner_len = heatmap.inner_len();
-    let outer_len = heatmap.outer_len();
-    
-    let heatmap = heatmap.create_heatmap();
+    //let inner_len = heatmap.inner_len();
+    //let outer_len = heatmap.outer_len();
+    //
+    //let heatmap = heatmap.create_heatmap();
 
     let file = File::create(filename).unwrap();
     let mut writer = BufWriter::new(file);
 
     writeln!(writer, "#{}", stats::get_cmd_args()).unwrap();
+    heatmap.write_heatmap(writer, HeatmapNormalization::NormalizeTotal)
+        .unwrap();
     // mirror
-    for inner in 0..inner_len
-    {
-        for outer in 0..outer_len - 1{
-            write!(writer, "{} ", heatmap[outer][inner]).unwrap();
-        }
-        writeln!(writer, "{}", heatmap[outer_len-1][inner]).unwrap();
-    }
+    //for inner in 0..inner_len
+    //{
+    //    for outer in 0..outer_len - 1{
+    //        write!(writer, "{} ", heatmap[outer][inner]).unwrap();
+    //    }
+    //    writeln!(writer, "{}", heatmap[outer_len-1][inner]).unwrap();
+    //}
 }

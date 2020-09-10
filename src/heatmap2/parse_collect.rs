@@ -5,16 +5,17 @@ use std::io::*;
 use std::fs::*;
 use crate::histogram::*;
 use crate::parse_files::parse_helper;
+use net_ensembles::sampling::*;
 use std::result::Result;
 use std::path::Path;
-use sampling::histogram::*;
 use indicatif::*;
+use rayon::prelude::*;
 
 fn parse_and_count<R>
 (
     reader: R, 
     every: usize, 
-    heatmap: &mut Heatmap<HistogramUsize, HistogramF64>,
+    heatmap: &mut Heatmap<HistUsize, HistF64>,
     reduce: HistReduce,
 )
 where
@@ -40,31 +41,38 @@ where
                 
                 let vec: Vec<f64> = parse_helper(slice);
                 let res = reduce.reduce(&vec);
-                heatmap.count(energy, res);
+                heatmap.count(energy, res)
+                    .unwrap();
             }
         );
 }
 
-pub fn parse_and_count_all_files(opts: Heatmap2Opts) -> Heatmap<HistogramUsize, HistogramF64>
+pub fn parse_and_count_all_files(opts: Heatmap2Opts) -> Heatmap<HistUsize, HistF64>
 {
-    let outer_hist = HistogramUsize::new(1, opts.n + 1, opts.bins_outer)
+    let outer_hist = HistUsize::new(1, opts.n + 1, opts.bins_outer)
         .expect("failed to create outer hist");
-    let inner_hist = HistogramF64::new(opts.left, opts.right, opts.bins_inner)
+    let inner_hist = HistF64::new(opts.left, opts.right, opts.bins_inner)
         .expect("failed to create inner hist");
-    let mut heatmap = Heatmap::new(outer_hist, inner_hist);
+    
     
     let files: Vec<_> = glob::glob(&opts.files)
         .unwrap()
         .filter_map(Result::ok)
         .collect();
     
-    files.iter()
+    let mut heatmaps: Vec<_> = files.par_iter()
         .progress()
-        .for_each(|entry|
+        .map(|entry|
             {
+                let mut heatmap = Heatmap::new(outer_hist.clone(), inner_hist.clone());
                 parse_and_count_file(entry, opts.every, &mut heatmap, opts.hist_reduce);
+                heatmap
             }
-        );
+        ).collect();
+    let mut heatmap = heatmaps.pop().unwrap();
+    for h in heatmaps {
+        heatmap.combine(&h).unwrap();
+    }
     heatmap
 }
 
@@ -74,7 +82,7 @@ pub fn parse_and_count_file<P>
 (
     filename: P,
     every: usize,
-    data: &mut Heatmap<HistogramUsize, HistogramF64>,
+    data: &mut Heatmap<HistUsize, HistF64>,
     hist_reduce: HistReduce
 )
 where P: AsRef<Path>,

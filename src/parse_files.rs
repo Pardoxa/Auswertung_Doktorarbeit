@@ -130,8 +130,11 @@ where
 pub fn parse_and_group_all_files(opts: HeatmapOpts) -> Data
 {
     let mut data = Data::new_from_heatmap_options(&opts);
-    let index = |energy| (energy - 1) / opts.bin_size;
+    let index = |energy| {
+        (energy - 1) / opts.bin_size
+    };
     for entry in glob::glob(&opts.files).unwrap().filter_map(Result::ok) {
+        dbg!(&entry);
         parse_and_group_file(entry, opts.every, &mut data, index, opts.data_mode);
     }
     data
