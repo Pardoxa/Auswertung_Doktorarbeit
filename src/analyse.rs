@@ -54,6 +54,7 @@ pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize, mode: Mode) -> Sta
                         Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
                         Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
                         Mode::Corr => data.calc_correlation(i, j, k, l),
+                        _ => unreachable!()
                     };
                     diff_helper.push(reduced);
                 }
@@ -159,58 +160,116 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
     let mut results = Vec::new();
     pool.install(||
     {
-        jobs.into_par_iter().map(
-            |(i, j)|
-            {
-                
-                //let len = data.get_inside_len();
-                let mut iteration_count = 0;
-                let mut sum = 0.0;
-                if i == j {
-                    for k in 0..data.get_len_at_index(i) {
-                        for l in 0..data.get_len_at_index(j){
-                            if k != l {
-                                iteration_count += 1;
-                                sum += match mode {
-                                    Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
-                                    Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
-                                    Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
-                                    Mode::Corr => data.calc_correlation(i, j, k, l),
-                                };
+        match mode {
+            Mode::IndexMaxAbs => {
+                let data = IndexData::to_index_max(data);
+                jobs.into_par_iter().map(
+                    |(i, j)|
+                    {
+                        //let len = data.get_inside_len();
+                        let mut iteration_count = 0;
+                        let mut sum = 0_isize;
+                        if i == j {
+                            for k in 0..data.get_len_at_index(i) {
+                                for l in 0..data.get_len_at_index(j){
+                                    if k != l {
+                                        iteration_count += 1;
+                                        sum += match mode {
+                                            Mode::IndexMaxAbs => {
+                                                data.abs(i, j, k, l)
+                                            },
+                                            _ => unreachable!()
+                                        };
+                                    }
+                                }
                             }
-                        }
-                    }
-                } else {
-                    for k in 0..data.get_len_at_index(i) {
-                        iteration_count += data.get_len_at_index(j);
-                        for l in 0..data.get_len_at_index(j){
-                            
-                            sum += match mode {
-                                Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
-                                Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
-                                Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
-                                Mode::Corr => data.calc_correlation(i, j, k, l),
-                            };
-                            
-                        }
-                    }
-                };
+                        } else {
+                            for k in 0..data.get_len_at_index(i) {
+                                iteration_count += data.get_len_at_index(j);
+                                for l in 0..data.get_len_at_index(j){
+
+                                    sum += match mode {
+                                        Mode::IndexMaxAbs => {
+                                            data.abs(i, j, k, l)
+                                        },
+                                        _ => unreachable!()
+                                    };
+
+                                }
+                            }
+                        };
                 
                    
-                for b in bar.iter(){
-                    b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
-                }
+                        for b in bar.iter(){
+                            b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
+                        }
                 
-                JobRes{
-                    mean: sum / iteration_count as f64,
-                    i,
-                    j,
-                    iterations: iteration_count
+                        JobRes{
+                            mean: sum as f64 / iteration_count as f64,
+                            i,
+                            j,
+                            iterations: iteration_count
+                        }
                 }
+                ).collect_into_vec(&mut results);
+            },
+            _ => {
+                jobs.into_par_iter().map(
+                    |(i, j)|
+                    {
+                        
+                        //let len = data.get_inside_len();
+                        let mut iteration_count = 0;
+                        let mut sum = 0.0;
+                        if i == j {
+                            for k in 0..data.get_len_at_index(i) {
+                                for l in 0..data.get_len_at_index(j){
+                                    if k != l {
+                                        iteration_count += 1;
+                                        sum += match mode {
+                                            Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
+                                            Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
+                                            Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
+                                            Mode::Corr => data.calc_correlation(i, j, k, l),
+                                            _ => unreachable!()
+                                        };
+                                    }
+                                }
+                            }
+                        } else {
+                            for k in 0..data.get_len_at_index(i) {
+                                iteration_count += data.get_len_at_index(j);
+                                for l in 0..data.get_len_at_index(j){
+                                    
+                                    sum += match mode {
+                                        Mode::Abs => data.calc_mean(i, j, k, l, mode_abs),
+                                        Mode::Sqrt => data.calc_mean(i, j, k, l, mode_sqrt),
+                                        Mode::Cbrt => data.calc_mean(i, j, k, l, mode_cbrt),
+                                        Mode::Corr => data.calc_correlation(i, j, k, l),
+                                        _ => unreachable!()
+                                    };
+                                    
+                                }
+                            }
+                        };
+                        
+                           
+                        for b in bar.iter(){
+                            b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
+                        }
+                        
+                        JobRes{
+                            mean: sum / iteration_count as f64,
+                            i,
+                            j,
+                            iterations: iteration_count
+                        }
+                    }
+                ).collect_into_vec(&mut results);
             }
-        ).collect_into_vec(&mut results);
+        };
+        
     });
-    
 
     for r in results {
         stats.push_job_res_unchecked(r);
@@ -224,4 +283,5 @@ pub fn write_matr(stats: Stats, opts: HeatmapOpts)
 {
     let mut stats_writer = StatsWriter::new_from_heatmap_opts(opts.clone());
     stats_writer.write_stats(stats);
+    stats_writer.mean_writer.finish().unwrap();
 }

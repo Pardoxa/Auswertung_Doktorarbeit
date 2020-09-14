@@ -5,6 +5,8 @@ use std::fs::*;
 use std::env;
 use rgsl::statistics::correlation;
 use std::ops::*;
+use rayon::prelude::*;
+use lzma::LzmaWriter;
 
 #[derive(Clone)]
 pub struct Stats{
@@ -64,14 +66,14 @@ pub fn get_cmd_args() -> String
     args.join(" ")
 }
 
-pub struct StatsWriter<W>
+pub struct StatsWriter<W, W2>
 {
-    mean_writer: W,
-    iteration_count_writer: W,
-    curve_count_writer: W,
+    pub(crate) mean_writer: W,
+    iteration_count_writer: W2,
+    curve_count_writer: W2,
 }
 
-impl<W: Write> StatsWriter<W>{
+impl<W: Write, W2: Write> StatsWriter<W, W2>{
 
     fn write_mean(&mut self, mean: &Vec<Vec<f64>>)
     {
@@ -111,10 +113,10 @@ impl<W: Write> StatsWriter<W>{
     }
 }
 
-impl StatsWriter<File>{
-    pub fn new_from_heatmap_opts(opts: HeatmapOpts) -> StatsWriter<BufWriter<File>>
+impl StatsWriter<File, File>{
+    pub fn new_from_heatmap_opts(opts: HeatmapOpts) -> StatsWriter<LzmaWriter<BufWriter<File>>, BufWriter<File>>
     {
-        let mean_name = opts.generate_filename("stats.mean");
+        let mean_name = opts.generate_filename("stats.mean.xz");
         let iteration_name = opts.generate_filename("stats.iterations");
         let curve_count_name = opts.generate_filename("stats.curve_count");
         println!("Generated:\n{}\n{}\n{}", &mean_name, &iteration_name, &curve_count_name);
@@ -129,14 +131,20 @@ impl StatsWriter<File>{
             curve_count_writer,
         };
 
-        let mut stats: StatsWriter<BufWriter<File>> = stats.into();
+        let stats: StatsWriter<BufWriter<File>, BufWriter<File>> = stats.into();
+
+        let mut stats = StatsWriter{
+            mean_writer: LzmaWriter::new_compressor(stats.mean_writer, 4).unwrap(),
+            iteration_count_writer: stats.iteration_count_writer,
+            curve_count_writer: stats.curve_count_writer
+        };
         writeln!(stats, "#{}", get_cmd_args()).unwrap();
         writeln!(stats, "#{}", env::current_dir().unwrap().to_str().unwrap()).unwrap();
         stats
     }
 }
 
-impl<W: Write> Write for StatsWriter<W>{
+impl<W: Write, W2: Write> Write for StatsWriter<W, W2>{
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         self.mean_writer.write(buf)?;
         self.iteration_count_writer.write(buf)?;
@@ -150,8 +158,8 @@ impl<W: Write> Write for StatsWriter<W>{
     }
 }
 
-impl<W: Write> From<StatsWriter<W>> for StatsWriter<BufWriter<W>>{
-    fn from(origin: StatsWriter<W>) -> Self {
+impl<W: Write> From<StatsWriter<W, W>> for StatsWriter<BufWriter<W>, BufWriter<W>>{
+    fn from(origin: StatsWriter<W, W>) -> Self {
         Self{
             curve_count_writer: BufWriter::new(origin.curve_count_writer),
             iteration_count_writer: BufWriter::new(origin.iteration_count_writer),
@@ -188,6 +196,7 @@ impl Data{
         self.inside_len
     }
 
+    #[inline(always)]
     pub fn set_inside_len(&mut self, len: usize){
         self.inside_len = len;
         self.inside_len_set = true;
@@ -208,6 +217,7 @@ impl Data{
         0..self.data.len()
     }
 
+    #[inline(always)]
     pub fn get_len_at_index(&self, index: usize) -> usize {
         self.data[index].len()
     }
@@ -215,7 +225,8 @@ impl Data{
 
     /// calculates mean of (itemwise) reduction of two curves 
     /// cuve1: data[i][k]
-    /// curve2: data[j][l] 
+    /// curve2: data[j][l]
+    #[inline(always)]
     pub fn calc_mean<F>(&self, i: usize, j: usize, k: usize, l: usize, reduction: F) -> f64
     where F: Fn(f64, f64) -> f64
     {
@@ -234,6 +245,50 @@ impl Data{
             self.data[i][k].len()
         )
 
+    }
+
+}
+
+pub struct IndexData{
+    pub index_data: Vec<Vec<isize>>
+}
+
+impl IndexData {
+    pub fn to_index_max(data: Data) -> Self
+    {
+        let index_data: Vec<_> = data.data
+            .par_iter()
+            .map(|vec_vec| {
+                let max_index_vec: Vec<_> = vec_vec.iter()
+                    .map(|v|{
+                        let max = v.iter()
+                            .copied()
+                            .max_by(|a,b| {
+                            a.partial_cmp(b)
+                                .expect("NAN ENCOUNTERED!")
+                        }).expect("Max Index error");
+                        let pos = v.iter()
+                            .position(|&val| val == max)
+                            .unwrap();
+                        pos as isize
+                    }
+                    ).collect();
+                max_index_vec
+            }).collect();
+        Self{
+            index_data
+        }
+    }
+
+    #[inline(always)]
+    pub fn abs(&self,  i: usize, j: usize, k: usize, l: usize) -> isize
+    {
+        (self.index_data[i][k] - self.index_data[j][l]).abs()
+    }
+
+    #[inline(always)]
+    pub fn get_len_at_index(&self, index: usize) -> usize {
+        self.index_data[index].len()
     }
 }
 

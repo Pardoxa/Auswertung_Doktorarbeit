@@ -144,7 +144,8 @@ pub enum Mode
     Abs,
     Sqrt,
     Cbrt,
-    Corr
+    Corr,
+    IndexMaxAbs,
 }
 
 
@@ -155,6 +156,7 @@ impl From<usize> for Mode{
             1 => Mode::Sqrt,
             2 => Mode::Cbrt,
             3 => Mode::Corr,
+            4 => Mode::IndexMaxAbs,
             _ => panic!("invalid mode!"),
         }
     }
