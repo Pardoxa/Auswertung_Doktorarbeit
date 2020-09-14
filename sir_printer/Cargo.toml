@@ -1,0 +1,19 @@
+[package]
+name = "sir_printer"
+version = "0.1.0"
+authors = ["Yannick Feld <yannick.feld@uol.de>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rust-lzma = "0.5.1"
+flate2 = { version = "1.0", features = ["cloudflare_zlib"], default-features = false }
+structopt = "^0.3"
+
+[profile.release]
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+lto = true
