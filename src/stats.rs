@@ -250,7 +250,8 @@ impl Data{
 }
 
 pub struct IndexData{
-    pub index_data: Vec<Vec<isize>>
+    pub index_data: Vec<Vec<isize>>,
+    pub val_max_data: Vec<Vec<f64>>
 }
 
 impl IndexData {
@@ -275,8 +276,21 @@ impl IndexData {
                     ).collect();
                 max_index_vec
             }).collect();
+
+        let val_max_data: Vec<_> = index_data.iter()
+            .zip(data.data)
+            .map(|(ind_vec, cur_vec)| {
+                ind_vec.iter().zip(cur_vec.iter())
+                    .map(|(i, cur)|
+                    {
+                        let index = *i as usize;
+                        cur[index]
+                    }
+                ).collect()
+            }).collect();
         Self{
-            index_data
+            index_data,
+            val_max_data
         }
     }
 
@@ -284,6 +298,12 @@ impl IndexData {
     pub fn abs(&self,  i: usize, j: usize, k: usize, l: usize) -> isize
     {
         (self.index_data[i][k] - self.index_data[j][l]).abs()
+    }
+
+    #[inline(always)]
+    pub fn abs_val(&self,  i: usize, j: usize, k: usize, l: usize) -> f64
+    {
+        (self.val_max_data[i][k] - self.val_max_data[j][l]).abs()
     }
 
     #[inline(always)]

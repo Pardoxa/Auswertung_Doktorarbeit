@@ -161,7 +161,7 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
     pool.install(||
     {
         match mode {
-            Mode::IndexMaxAbs => {
+            Mode::IndexMaxAbs | Mode::MaxValAbs => {
                 let data = IndexData::to_index_max(data);
                 jobs.into_par_iter().map(
                     |(i, j)|
@@ -169,14 +169,18 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
                         //let len = data.get_inside_len();
                         let mut iteration_count = 0;
                         let mut sum = 0_isize;
+                        let mut val_sum = 0.0;
                         if i == j {
                             for k in 0..data.get_len_at_index(i) {
                                 for l in 0..data.get_len_at_index(j){
                                     if k != l {
                                         iteration_count += 1;
-                                        sum += match mode {
+                                        match mode {
                                             Mode::IndexMaxAbs => {
-                                                data.abs(i, j, k, l)
+                                                sum += data.abs(i, j, k, l);
+                                            },
+                                            Mode::MaxValAbs => {
+                                                val_sum += data.abs_val(i, j, k, l);
                                             },
                                             _ => unreachable!()
                                         };
@@ -188,9 +192,12 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
                                 iteration_count += data.get_len_at_index(j);
                                 for l in 0..data.get_len_at_index(j){
 
-                                    sum += match mode {
+                                    match mode {
                                         Mode::IndexMaxAbs => {
-                                            data.abs(i, j, k, l)
+                                            sum += data.abs(i, j, k, l);
+                                        },
+                                        Mode::MaxValAbs => {
+                                            val_sum += data.abs_val(i, j, k, l);
                                         },
                                         _ => unreachable!()
                                     };
@@ -203,9 +210,17 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
                         for b in bar.iter(){
                             b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
                         }
-                
+                        let mean = match mode {
+                            Mode::IndexMaxAbs => {
+                                sum as f64 / iteration_count as f64
+                            },
+                            Mode::MaxValAbs => {
+                                val_sum / iteration_count as f64
+                            },
+                            _ => unreachable!()
+                        };
                         JobRes{
-                            mean: sum as f64 / iteration_count as f64,
+                            mean,
                             i,
                             j,
                             iterations: iteration_count

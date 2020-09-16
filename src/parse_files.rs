@@ -42,6 +42,7 @@ fn parse_and_group<R, F>
     every: usize,
     data: &mut Data,
     index_func: F,
+    norm: bool,
 )
 where
         F: Fn(usize) -> usize,
@@ -80,7 +81,9 @@ where
                     vec
                 };
                 
-                norm_vec(&mut vec);
+                if norm {
+                    norm_vec(&mut vec);
+                }
                 
                 // append to correct bin
                 data.push(index_func(energy), vec);
@@ -94,6 +97,7 @@ fn parse_and_group_naive<R, F>
     every: usize, 
     data: &mut Data,
     index_func: F,
+    norm: bool,
 )
 where
     F: Fn(usize) -> usize,
@@ -119,7 +123,9 @@ where
                 
                 let mut vec: Vec<f64> = parse_helper(slice);
                 
-                norm_vec(&mut vec);
+                if norm {
+                    norm_vec(&mut vec);
+                }
 
                 // append to correct bin
                 data.push(index_func(energy), vec);
@@ -135,7 +141,7 @@ pub fn parse_and_group_all_files(opts: HeatmapOpts) -> Data
     };
     for entry in glob::glob(&opts.files).unwrap().filter_map(Result::ok) {
         dbg!(&entry);
-        parse_and_group_file(entry, opts.every, &mut data, index, opts.data_mode);
+        parse_and_group_file(entry, opts.every, &mut data, index, opts.data_mode, opts.norm);
     }
     data
 }
@@ -148,7 +154,8 @@ pub fn parse_and_group_file<P, F>
     every: usize,
     data: &mut Data,
     index_func: F,
-    data_mode: DataMode
+    data_mode: DataMode,
+    norm: bool
 )
 where P: AsRef<Path>,
     F: Fn(usize) -> usize,
@@ -164,21 +171,21 @@ where P: AsRef<Path>,
         "gz" => {
             let decoder = GzDecoder::new(file);
             match data_mode {
-               DataMode::Sparse => parse_and_group(decoder, every, data, index_func),
-               DataMode::Naive => parse_and_group_naive(decoder, every, data, index_func),
+               DataMode::Sparse => parse_and_group(decoder, every, data, index_func, norm),
+               DataMode::Naive => parse_and_group_naive(decoder, every, data, index_func, norm),
             };
         },
         "xz" => {
             let decoder = LzmaReader::new_decompressor(file).unwrap();
             match data_mode {
-                DataMode::Sparse => parse_and_group(decoder, every, data, index_func),
-                DataMode::Naive => parse_and_group_naive(decoder, every, data, index_func),
+                DataMode::Sparse => parse_and_group(decoder, every, data, index_func, norm),
+                DataMode::Naive => parse_and_group_naive(decoder, every, data, index_func, norm),
             };
         },
         _ => {
             match data_mode {
-                DataMode::Sparse => parse_and_group(file, every, data, index_func),
-                DataMode::Naive => parse_and_group_naive(file, every, data, index_func),
+                DataMode::Sparse => parse_and_group(file, every, data, index_func, norm),
+                DataMode::Naive => parse_and_group_naive(file, every, data, index_func, norm),
             };
         }
     }

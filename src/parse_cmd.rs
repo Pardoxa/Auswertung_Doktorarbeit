@@ -18,9 +18,13 @@ pub enum Opt
 {
     /// TODO description
     Heatmap {
-        /// number of nodes
+        /// number of nodes that are reachable (minus 1)
         #[structopt(long,short)]
         n: usize,
+
+        /// actual number of nodes
+        #[structopt(long)]
+        n_real: Option<usize>,
 
         /// number of samples
         #[structopt(long, short)]
@@ -49,6 +53,10 @@ pub enum Opt
         #[structopt(long, default_value = "2")]
         /// min number of curves to be used in calculation
         cutoff: usize,
+
+        #[structopt(long)]
+        /// do not norm curves
+        no_norm: bool,
 
         /// choose compare mode, default: 0
         /// * 0: Abs
@@ -146,6 +154,7 @@ pub enum Mode
     Cbrt,
     Corr,
     IndexMaxAbs,
+    MaxValAbs
 }
 
 
@@ -157,6 +166,7 @@ impl From<usize> for Mode{
             2 => Mode::Cbrt,
             3 => Mode::Corr,
             4 => Mode::IndexMaxAbs,
+            5 => Mode::MaxValAbs,
             _ => panic!("invalid mode!"),
         }
     }
@@ -315,7 +325,7 @@ impl From<Opt> for HistogramOpts{
                     no_p_bar,
                     every,
                     hist_reduce,
-                    suffix,
+                    suffix
                 }
             },
             _ => unreachable!()
@@ -326,6 +336,7 @@ impl From<Opt> for HistogramOpts{
 #[derive(Clone)]
 pub struct HeatmapOpts{
     pub n: usize,
+    pub n_real: Option<usize>,
     pub bins: usize,
     pub files: String,
     pub bin_size: usize,
@@ -337,15 +348,28 @@ pub struct HeatmapOpts{
     pub mode: Mode,
     pub suffix: String,
     pub data_mode: DataMode,
+    pub norm: bool
 }
 
 impl HeatmapOpts{
     pub fn generate_filename<D: std::fmt::Display>(&self, extension: D) -> String
     {
+        let norm = if self.norm {
+            "norm"
+        } else {
+            "NoNorm"
+        };
+        let n_actual = if let Some(val) = self.n_real {
+            val
+        } else {
+            self.n
+        };
         format!(
-            "v{}_{:?}_N{}_b{}_e{}_{}.{}.{}", 
+            "v{}_{:?}_{}_N{}_Reach{}_b{}_e{}_{}.{}.{}", 
             env!("CARGO_PKG_VERSION"),
             self.mode,
+            norm,
+            n_actual,
             self.n,
             self.bins,
             self.every,
@@ -400,6 +424,8 @@ impl From<Opt> for HeatmapOpts{
                 every,
                 cutoff,
                 mode,
+                no_norm,
+                n_real,
             } => {
                 if n % bins != 0 {
                     eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
@@ -430,7 +456,9 @@ impl From<Opt> for HeatmapOpts{
                     cutoff,
                     mode: mode.into(),
                     suffix,
-                    data_mode
+                    data_mode,
+                    norm: !no_norm,
+                    n_real,
                 }
             },
             _ => unreachable!()
