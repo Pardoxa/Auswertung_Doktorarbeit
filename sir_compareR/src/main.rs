@@ -9,7 +9,7 @@ use histogram::*;
 use std::io::*;
 use std::fs::*;
 use net_ensembles::sampling::*;
-
+use either::*;
 mod heatmap2;
 
 fn main() {
@@ -24,10 +24,7 @@ fn main() {
 
 fn write_heatmap(opts: HeatmapOpts)
 {
-    //let reduction = |a:f64, b:f64| (a - b) * (a- b);
-    //let reduction = |
-    //let reduction = |a:f64, b:f64| (a - b).abs().sqrt();
-    //let reduction = |a:f64, b:f64| (a - b).abs().cbrt();
+
     let sorted_data = parse_files::parse_and_group_all_files(opts.clone());
     let matr =
     match opts.j  {
@@ -60,7 +57,7 @@ fn write_histogram(opts: HistogramOpts)
 
 fn write_heatmap2(opts: Heatmap2Opts)
 {
-    let filename = opts.generate_filename(".heatmap2");
+    let filename = opts.generate_filename("heatmap2");
 
     let heatmap = heatmap2::parse_and_count_all_files(opts);
     //let inner_len = heatmap.inner_len();
@@ -72,8 +69,36 @@ fn write_heatmap2(opts: Heatmap2Opts)
     let mut writer = BufWriter::new(file);
 
     writeln!(writer, "#{}", stats::get_cmd_args()).unwrap();
-    heatmap.write_heatmap(writer, HeatmapNormalization::NormalizeTotal)
-        .unwrap();
+
+    match heatmap {
+        Left(heat) => {
+            println!("TOTAL: {}", heat.total());
+            println!("OUTSIDE: {}", heat.total_misses());
+            let frac = heat.total_misses() as f64/ heat.total() as f64;
+            println!("FRAC: {}", frac);
+            heat.gnuplot(
+                "test",
+                "bla",
+                "data",
+                HeatmapNormalization::NormalizeTotal,
+                GnuplotTerminal::PDF
+            ).unwrap();
+        },
+        Right(heat) => {
+            println!("TOTAL: {}", heat.total());
+            println!("OUTSIDE: {}", heat.total_misses());
+            let frac = heat.total_misses() as f64/ heat.total() as f64;
+            println!("FRAC: {}", frac);
+            heat.gnuplot(
+                "test",
+                "bla",
+                "data",
+                HeatmapNormalization::NormalizeTotal,
+                GnuplotTerminal::PDF
+            ).unwrap();
+        }
+    };
+
     // mirror
     //for inner in 0..inner_len
     //{

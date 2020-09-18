@@ -4,6 +4,7 @@ use std::process::exit;
 use std::collections::*;
 use crate::parse_files::*;
 use crate::histogram::*;
+use crate::heatmap2::*;
 
 const COMPRESSION_SUFFIX: [&str; 2]= ["gz", "xz"];
 
@@ -105,21 +106,15 @@ pub enum Opt
         #[structopt(long,short)]
         n: usize,
 
-        #[structopt(long, default_value="0")]
-        /// inner left
-        left: f64,
-
+        /// number of bins for energy
         #[structopt(long)]
-        /// inner right
-        right: f64,
+        bins: usize,
 
+        /// For requesting the heatmap
+        /// e.g. 'f 100 0 100' for float, 100 bins, left 0, right 100
+        /// e.g. 'u 100 0 100' for usize, 100 bins, left 0, right 100
         #[structopt(long)]
-        /// number of inner bins
-        bins_inner: usize,
-
-        #[structopt(long)]
-        /// number of outer bins
-        bins_outer: usize,
+        heatmap: HeatmapBuilder,
 
         /// filenames
         #[structopt(long, short)]
@@ -137,11 +132,14 @@ pub enum Opt
         /// use every nth step
         every: usize,
 
+        #[structopt(long)]
+        /// norm curves before calculation
+        normed: bool,
 
         /// What function to use
         /// valid: indexmax, valmax
         #[structopt(long)]
-        hist_reduce: HistReduce,
+        fun: FunctionChooser,
         
     }
 }
@@ -176,30 +174,27 @@ impl From<usize> for Mode{
 pub struct Heatmap2Opts
 {
     pub n: usize,
-    pub bins_outer: usize,
-    pub left: f64,
-    pub right: f64,
-    pub bins_inner: usize,
+    pub bins: usize,
     pub files: String,
     pub save: String,
     pub no_p_bar: bool,
     pub every: usize,
     pub suffix: String,
-    pub hist_reduce: HistReduce,
+    pub fun: FunctionChooser,
+    pub normed: bool,
+    pub heatmap_builder: HeatmapBuilder,
 }
 
 impl Heatmap2Opts{
     pub fn generate_filename<D: std::fmt::Display>(&self, extension: D) -> String
     {
         format!(
-            "v{}_{:?}_N{}_b{}_l{}_r{}_{}_e{}_{}.{}.{}", 
+            "v{}_{:?}_N{}_b{}_{}_e{}_{}.{}.{}", 
             env!("CARGO_PKG_VERSION"),
-            self.hist_reduce,
+            self.fun,
             self.n,
-            self.bins_outer,
-            self.left,
-            self.right,
-            self.bins_inner,
+            self.bins,
+            self.heatmap_builder,
             self.every,
             self.save,
             &self.suffix,
@@ -213,19 +208,18 @@ impl From<Opt> for Heatmap2Opts{
     fn from(opt: Opt) -> Self {
         match opt {
             Opt::Heatmap2 {
-                n, 
-                bins_outer,
-                left, 
-                right,
-                bins_inner,
+                n,
                 files,
                 save,
                 no_p_bar,
                 every,
-                hist_reduce
+                fun,
+                normed,
+                heatmap,
+                bins,
             } => {
-                if n % bins_outer != 0 {
-                    eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins_outer, n % bins_outer);
+                if n % bins != 0 {
+                    eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
                     exit(-1);
                 }
                 let suffix = match get_suffix(&files){
@@ -240,16 +234,15 @@ impl From<Opt> for Heatmap2Opts{
                 
                 Heatmap2Opts{
                     n,
-                    bins_inner,
-                    bins_outer,
-                    right,
-                    left,
+                    bins,
+                    heatmap_builder: heatmap,
                     files,
                     save,
                     no_p_bar,
                     every,
-                    hist_reduce,
+                    fun,
                     suffix,
+                    normed
                 }
             },
             _ => unreachable!()
