@@ -11,8 +11,8 @@ use rayon::prelude::*;
 use crate::heatmap2::*;
 use either::*;
 
-pub type HeatmapUF = Heatmap<HistUsize, HistF64>;
-pub type HeatmapUU = Heatmap<HistUsize, HistUsize>;
+pub type HeatmapUF = HeatmapU<HistUsize, HistF64>;
+pub type HeatmapUU = HeatmapU<HistUsize, HistUsize>;
 pub type EitherH = Either<HeatmapUF, HeatmapUU>;
 
 fn parse_and_count<R>
@@ -60,7 +60,7 @@ where
 pub(crate) fn parse_into_heatmap_f64
 (
     slice: &str,
-    heatmap: &mut Heatmap<HistUsize, HistF64>,
+    heatmap: &mut HeatmapUF,
     fun: FunctionChooser,
     normed: bool
 )
@@ -93,7 +93,7 @@ pub(crate) fn parse_into_heatmap_f64
 pub(crate) fn parse_into_heatmap_usize
 (
     slice: &str,
-    heatmap: &mut Heatmap<HistUsize, HistUsize>,
+    heatmap: &mut HeatmapUU,
     fun: FunctionChooser,
     normed: bool
 )
@@ -122,7 +122,7 @@ pub(crate) fn parse_into_heatmap_usize
     let _ = heatmap.count(energy, val);
 }
 
-pub fn parse_and_count_all_files(opts: Heatmap2Opts) -> EitherH
+pub fn parse_and_count_all_files(opts: &Heatmap2Opts) -> EitherH
 {
     
     let files: Vec<_> = glob::glob(&opts.files)

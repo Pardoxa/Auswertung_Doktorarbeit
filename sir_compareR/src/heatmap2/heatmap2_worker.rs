@@ -152,13 +152,13 @@ impl HeatmapBuilder{
             {
                 let fun_hist = HistF64::new(*left, *right, *bins)
                     .expect("failed to create fun hist");
-                let heatmap = Heatmap::new(energy_hist, fun_hist);
+                let heatmap = HeatmapU::new(energy_hist, fun_hist);
                 Left(heatmap)
             },
             Self::UsizeHeatmap{bins, left, right} => {
                 let fun_hist = HistUsize::new(*left, *right, *bins)
                     .expect("failed to create fun hist");
-                let heatmap = Heatmap::new(energy_hist, fun_hist);
+                let heatmap = HeatmapU::new(energy_hist, fun_hist);
                 Right(heatmap)
             }
         }

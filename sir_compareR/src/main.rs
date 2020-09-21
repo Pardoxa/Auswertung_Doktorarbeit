@@ -57,18 +57,22 @@ fn write_histogram(opts: HistogramOpts)
 
 fn write_heatmap2(opts: Heatmap2Opts)
 {
-    let filename = opts.generate_filename("heatmap2");
+    let filename = opts.generate_filename("h2.gp");
+    println!("creating: {}", &filename);
 
-    let heatmap = heatmap2::parse_and_count_all_files(opts);
-    //let inner_len = heatmap.inner_len();
-    //let outer_len = heatmap.outer_len();
-    //
-    //let heatmap = heatmap.create_heatmap();
+    let heatmap = heatmap2::parse_and_count_all_files(&opts);
 
-    let file = File::create(filename).unwrap();
+    let file = File::create(&filename).unwrap();
     let mut writer = BufWriter::new(file);
 
     writeln!(writer, "#{}", stats::get_cmd_args()).unwrap();
+
+    let mut settings = GnuplotSettings::new();
+    let y_lab = format!("{:?}", opts.fun);
+    settings.x_label("E")
+        .y_label(y_lab)
+        .x_axis(GnuplotAxis::new(0.0, 1.0, 5))
+        .pallet(GnuplotPallet::PresetRGB);
 
     match heatmap {
         Left(heat) => {
@@ -76,12 +80,19 @@ fn write_heatmap2(opts: Heatmap2Opts)
             println!("OUTSIDE: {}", heat.total_misses());
             let frac = heat.total_misses() as f64/ heat.total() as f64;
             println!("FRAC: {}", frac);
+            let heat = heat.into_heatmap_normalized_columns();
+
+            let min_val = *heat.height_hist().borders().first().unwrap();
+            let max_val = *heat.height_hist()
+                .borders()
+                .last()
+                .unwrap();
+            settings.y_axis(GnuplotAxis::new(min_val, max_val, 5));
+
             heat.gnuplot(
-                "test",
-                "bla",
-                "data",
-                HeatmapNormalization::NormalizeTotal,
-                GnuplotTerminal::PDF
+                writer,
+                filename,
+                settings
             ).unwrap();
         },
         Right(heat) => {
@@ -89,12 +100,21 @@ fn write_heatmap2(opts: Heatmap2Opts)
             println!("OUTSIDE: {}", heat.total_misses());
             let frac = heat.total_misses() as f64/ heat.total() as f64;
             println!("FRAC: {}", frac);
+            let heat = heat.into_heatmap_normalized_columns();
+
+            let min_val = *heat.height_hist().borders().first().unwrap() as f64;
+            let max_val = *heat.height_hist()
+                .borders()
+                .last()
+                .unwrap() - 1;
+            let max_val = max_val as f64;
+
+            settings.y_axis(GnuplotAxis::new(min_val, max_val, 5));
+
             heat.gnuplot(
-                "test",
-                "bla",
-                "data",
-                HeatmapNormalization::NormalizeTotal,
-                GnuplotTerminal::PDF
+                writer,
+                filename,
+                settings
             ).unwrap();
         }
     };
