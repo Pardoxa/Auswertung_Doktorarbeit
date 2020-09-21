@@ -8,8 +8,11 @@ use std::fmt;
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionChooser{
     ValMax,
+    ValMin,
     IndexMax,
-    LastIndexNotZero
+    IndexMin,
+    LastIndexNotZero,
+    From30To80,
 }
 
 impl FunctionChooser{
@@ -28,7 +31,47 @@ impl FunctionChooser{
         match self {
             FunctionChooser::ValMax => max_val(iter),
             FunctionChooser::IndexMax => max_index(iter),
-            _ => unimplemented!()
+            FunctionChooser::IndexMin => min_index(iter),
+            FunctionChooser::ValMin => min_val(iter),
+            FunctionChooser::LastIndexNotZero => {
+                let mut index = 0;
+                for (id, val) in iter.enumerate() {
+                    if val != 0 {
+                        index = id; 
+                    }
+                }
+                index
+            },
+            FunctionChooser::From30To80 => {
+                let max_val = max_val(iter.clone());
+                let p80 = max_val as f64 * 0.8;
+                let p30 = max_val as f64 * 0.3;
+                let mut index_p30 = None;
+                let mut val_p30 = 0.0;
+                let mut index_p80 = None;
+                for (index, val) in iter.clone().enumerate()
+                {
+                    if val as f64 >= p30 {
+                        index_p30 = Some(index);
+                        val_p30 = val as f64;
+                        break;
+                    }
+                }
+                for (index, val) in iter.enumerate()
+                {
+                    if val as f64 >= p80 {
+                        index_p80 = Some(index);
+                        break;
+                    }
+                }
+                if index_p80.is_none() {
+                    dbg!(index_p30);
+                    dbg!(max_val);
+                    dbg!(val_p30);
+                    dbg!(p80);
+                }
+                index_p80.unwrap() - index_p30.unwrap()
+            }
         }
     }
 }
@@ -41,9 +84,12 @@ impl FromStr for FunctionChooser {
         match s.to_lowercase().as_str() {
             "indexmax" | "index_max" => Ok(FunctionChooser::IndexMax),
             "val_max" | "valmax" => Ok(FunctionChooser::ValMax),
+            "indexmin" | "index_min" => Ok(FunctionChooser::IndexMin),
+            "val_min" | "valmin" => Ok(FunctionChooser::ValMin),
             "lastindexnotzero" | "last_index_not_zero" | "last-index-not-zero" | "last" => Ok(FunctionChooser::LastIndexNotZero),
+            "30t80" => Ok(FunctionChooser::From30To80),
             _ => Err("Invalid FunctionChooser requested")
-            }
+        }
     }
 }
 
@@ -57,11 +103,28 @@ where I: Iterator<Item=T>,
         .unwrap()
 }
 
+pub fn min_val<T, I>(iter: I) -> T
+where I: Iterator<Item=T>,
+    T: Copy + OrdSubset,
+{
+    iter.ord_subset_min()
+        .unwrap()
+}
+
 fn max_index<T, I>(mut iter: I) -> usize 
 where I: Iterator<Item=T> + Clone,
     T: Copy + OrdSubset + Eq,
 {
     let max = max_val(iter.clone());
+    let index = iter.position(|v| v == max).unwrap();
+    index
+}
+
+fn min_index<T, I>(mut iter: I) -> usize 
+where I: Iterator<Item=T> + Clone,
+    T: Copy + OrdSubset + Eq,
+{
+    let max = min_val(iter.clone());
     let index = iter.position(|v| v == max).unwrap();
     index
 }
