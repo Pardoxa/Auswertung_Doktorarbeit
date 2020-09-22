@@ -11,13 +11,15 @@ use std::fs::*;
 use net_ensembles::sampling::*;
 use either::*;
 mod heatmap2;
+mod hist_analyser;
 
 fn main() {
     let options = get_cmd_opts();
     match options {
         Opt::Heatmap{..} => write_heatmap(options.into()),
         Opt::Histogram{..} => write_histogram(options.into()),
-        Opt::Heatmap2{..} => write_heatmap2(options.into())
+        Opt::Heatmap2{..} => write_heatmap2(options.into()),
+        Opt::Percent{..} => write_percent(options.into())
     };
 }
 
@@ -118,13 +120,40 @@ fn write_heatmap2(opts: Heatmap2Opts)
             ).unwrap();
         }
     };
+}
 
-    // mirror
-    //for inner in 0..inner_len
-    //{
-    //    for outer in 0..outer_len - 1{
-    //        write!(writer, "{} ", heatmap[outer][inner]).unwrap();
-    //    }
-    //    writeln!(writer, "{}", heatmap[outer_len-1][inner]).unwrap();
-    //}
+fn write_percent(opts: PercentOpts){
+    let mut hist_percent = hist_analyser::parse_and_count_all_files(&opts);
+
+    let res = hist_percent.percent(opts.percent);
+    let name = opts.generate_filename("percent");
+    let file = File::create(&name)
+        .unwrap();
+    let mut buf = BufWriter::new(file);
+
+    writeln!(buf, "#{}", stats::get_cmd_args()).unwrap();
+    writeln!(buf, "#percent: {}", opts.percent).unwrap();
+    
+    let max = res.iter()
+        .max_by_key(|&v| v.time)
+        .unwrap();
+    
+    writeln!(
+        buf,
+        "#max_val: {} max_val_bin_left: {} max_val_bin_right: {} count: {}",
+        max.time,
+        max.left,
+        max.right,
+        max.count
+    ).unwrap();
+
+    writeln!(buf, "#left right val/time count").unwrap();
+
+    for item in res {
+        writeln!(buf, "{} {} {} {}", item.left, item.right, item.time, item.count).unwrap();
+    }
+    println!("generated: {}", &name);
+    println!("easy plotting:");
+    println!("p \"{}\" u 1:3", &name);
+    println!("p \"{}\" u 1:4", name);
 }

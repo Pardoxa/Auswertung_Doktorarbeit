@@ -141,6 +141,95 @@ pub enum Opt
         #[structopt(long)]
         fun: FunctionChooser,
         
+    },
+    Percent {
+        /// number of nodes
+        #[structopt(long,short)]
+        n: usize,
+
+        /// number of bins for energy
+        #[structopt(long)]
+        bins: usize,
+
+        /// filenames
+        #[structopt(long, short)]
+        files: String,
+
+        /// What function to use
+        /// valid: indexmax, valmax
+        #[structopt(long)]
+        fun: FunctionChooser,
+
+        #[structopt(long, short)]
+        /// use every nth step
+        every: usize,
+
+        #[structopt(long, short)]
+        /// Percent val
+        percent: f64,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PercentOpts{
+    pub n: usize,
+    pub bins: usize,
+    pub files: String,
+    pub fun: FunctionChooser,
+    pub every: usize,
+    pub percent: f64,
+    pub suffix: String
+}
+
+impl PercentOpts{
+    pub fn generate_filename<D: std::fmt::Display>(&self, extension: D) -> String
+    {
+        format!(
+            "v{}_{:?}_N{}_b{}_e{}_p{}.{}.{}", 
+            env!("CARGO_PKG_VERSION"),
+            self.fun,
+            self.n,
+            self.bins,
+            self.every,
+            self.percent,
+            &self.suffix,
+            extension
+        )
+    }
+}
+
+impl From<Opt> for PercentOpts{
+    fn from(opt: Opt) -> Self {
+        match opt {
+            Opt::Percent {
+                n,
+                files,
+                every,
+                fun,
+                bins,
+                percent,
+            } => {
+                let suffix = match get_suffix(&files){
+                    Ok(suf) => suf,
+                    Err(set) => {
+                        eprintln!("WARNING: Sufix do not match! Found {:?}", set);
+                        set.into_iter()
+                            .collect::<Vec<String>>()
+                            .join("_")
+                    }
+                };
+                PercentOpts{
+                    n,
+                    files,
+                    fun,
+                    every,
+                    bins,
+                    percent,
+                    suffix
+                }
+            },
+            _ => unreachable!()
+        }
     }
 }
 
