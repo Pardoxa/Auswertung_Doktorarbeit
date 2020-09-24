@@ -48,13 +48,6 @@ pub fn parse_file<R: Read>(file: R) -> Vec<CurveEntry>
 }
 
 #[derive(Clone)]
-pub struct Curve{
-    pub left: Vec<usize>,
-    pub right: Vec<usize>,
-    pub probability: Vec<f64>
-}
-
-#[derive(Clone)]
 pub struct CurveEntry{
     pub left: usize,
     pub right: usize,
