@@ -70,7 +70,7 @@ fn write_heatmap2(opts: Heatmap2Opts)
     writeln!(writer, "#{}", stats::get_cmd_args()).unwrap();
 
     let mut settings = GnuplotSettings::new();
-    let y_lab = format!("{:?}", opts.fun);
+    let y_lab = format!("{}", opts.fun);
     settings.x_label("E")
         .y_label(y_lab)
         .x_axis(GnuplotAxis::new(0.0, 1.0, 5))

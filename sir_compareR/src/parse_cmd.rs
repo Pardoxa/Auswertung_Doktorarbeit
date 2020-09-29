@@ -137,7 +137,12 @@ pub enum Opt
         normed: bool,
 
         /// What function to use
-        /// valid: indexmax, valmax
+        /// valid: 'indexmax' bzw. 'index_max',
+        /// 'valmax' bzw. 'val_max',
+        /// 'index_min' bzw. 'indexmin',
+        /// 'val_min' bzw. 'valmin',
+        /// 'lastindexnotzero' bzw. 'last_index_not_zero' bzw. 'last-index-not-zero' bzw. 'last',
+        /// 'x_to_y' where x and y are f64
         #[structopt(long)]
         fun: FunctionChooser,
         
@@ -156,7 +161,12 @@ pub enum Opt
         files: String,
 
         /// What function to use
-        /// valid: indexmax, valmax
+        /// valid: 'indexmax' bzw. 'index_max',
+        /// 'valmax' bzw. 'val_max',
+        /// 'index_min' bzw. 'indexmin',
+        /// 'val_min' bzw. 'valmin',
+        /// 'lastindexnotzero' bzw. 'last_index_not_zero' bzw. 'last-index-not-zero' bzw. 'last',
+        /// 'x_to_y' where x and y are f64
         #[structopt(long)]
         fun: FunctionChooser,
 
@@ -185,7 +195,7 @@ impl PercentOpts{
     pub fn generate_filename<D: std::fmt::Display>(&self, extension: D) -> String
     {
         format!(
-            "v{}_{:?}_N{}_b{}_e{}_p{}.{}.{}", 
+            "v{}_{}_N{}_b{}_e{}_p{}.{}.{}", 
             env!("CARGO_PKG_VERSION"),
             self.fun,
             self.n,
@@ -278,7 +288,7 @@ impl Heatmap2Opts{
     pub fn generate_filename<D: std::fmt::Display>(&self, extension: D) -> String
     {
         format!(
-            "v{}_{:?}_N{}_b{}_{}_e{}_{}.{}.{}", 
+            "v{}_{}_N{}_b{}_{}_e{}_{}.{}.{}", 
             env!("CARGO_PKG_VERSION"),
             self.fun,
             self.n,

@@ -4,6 +4,7 @@ use crate::heatmap2::*;
 use net_ensembles::sampling::*;
 use either::*;
 use std::fmt;
+use fmt::Display;
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionChooser{
@@ -12,7 +13,20 @@ pub enum FunctionChooser{
     IndexMax,
     IndexMin,
     LastIndexNotZero,
-    From30To80,
+    FromXToY(f64, f64),
+}
+
+impl Display for FunctionChooser {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FromXToY(x, y) => {
+                write!(f, "from_{}_to_{}", x, y)
+            }
+            _ => {
+                write!(f, "{:?}", self)
+            }
+        }
+    }
 }
 
 impl FunctionChooser{
@@ -42,35 +56,35 @@ impl FunctionChooser{
                 }
                 index
             },
-            FunctionChooser::From30To80 => {
+            FunctionChooser::FromXToY(x, y) => {
                 let max_val = max_val(iter.clone());
-                let p80 = max_val as f64 * 0.8;
-                let p30 = max_val as f64 * 0.3;
-                let mut index_p30 = None;
-                let mut val_p30 = 0.0;
-                let mut index_p80 = None;
+                let p_y = max_val as f64 * y;
+                let p_x = max_val as f64 * x;
+                let mut index_p_x = None;
+                let mut val_p_x = 0.0;
+                let mut index_p_y = None;
                 for (index, val) in iter.clone().enumerate()
                 {
-                    if val as f64 >= p30 {
-                        index_p30 = Some(index);
-                        val_p30 = val as f64;
+                    if val as f64 >= p_x {
+                        index_p_x = Some(index);
+                        val_p_x = val as f64;
                         break;
                     }
                 }
                 for (index, val) in iter.enumerate()
                 {
-                    if val as f64 >= p80 {
-                        index_p80 = Some(index);
+                    if val as f64 >= p_y {
+                        index_p_y = Some(index);
                         break;
                     }
                 }
-                if index_p80.is_none() {
-                    dbg!(index_p30);
+                if index_p_y.is_none() {
+                    dbg!(index_p_x);
                     dbg!(max_val);
-                    dbg!(val_p30);
-                    dbg!(p80);
+                    dbg!(val_p_x);
+                    dbg!(p_y);
                 }
-                index_p80.unwrap() - index_p30.unwrap()
+                index_p_y.unwrap() - index_p_x.unwrap()
             }
         }
     }
@@ -87,8 +101,25 @@ impl FromStr for FunctionChooser {
             "indexmin" | "index_min" => Ok(FunctionChooser::IndexMin),
             "val_min" | "valmin" => Ok(FunctionChooser::ValMin),
             "lastindexnotzero" | "last_index_not_zero" | "last-index-not-zero" | "last" => Ok(FunctionChooser::LastIndexNotZero),
-            "30t80" => Ok(FunctionChooser::From30To80),
-            _ => Err("Invalid FunctionChooser requested")
+            _ => {
+                if s.contains("to") {
+                    let mut iter = s.split("_");
+                    let x = iter.next()
+                        .ok_or("Invalid FunctionChooser requested - invalid first (x) number")?;
+                    if let Some(n) = iter.next(){
+                        assert_eq!(n, "to", "Invalid_request - no to?");
+                    }
+                    let y = iter.next()
+                        .ok_or("Invalid FunctionChooser requested - invalid second (y) number")?;
+                    
+                    let x = x.parse::<f64>()
+                        .map_err(|_| "Invalid FunctionChooser requested - unable to parse first (x) number")?;
+                    let y = y.parse::<f64>()
+                        .map_err(|_| "Invalid FunctionChooser requested - unable to parse second (y) number")?;
+                    return Ok(Self::FromXToY(x, y));
+                }
+                Err("Invalid FunctionChooser requested")
+            }
         }
     }
 }
