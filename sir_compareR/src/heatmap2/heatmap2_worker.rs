@@ -14,6 +14,8 @@ pub enum FunctionChooser{
     IndexMin,
     LastIndexNotZero,
     FromXToY(f64, f64),
+    /// sum for usize, otherwise sum * energy (fraction)
+    Sum
 }
 
 impl Display for FunctionChooser {
@@ -30,11 +32,12 @@ impl Display for FunctionChooser {
 }
 
 impl FunctionChooser{
-    pub fn f64_exec<I>(&self, iter: I) -> f64
+    pub fn f64_exec<I>(&self, iter: I, energy: usize) -> f64
     where I: Iterator<Item=f64>
     {
         match self {
             FunctionChooser::ValMax => max_val(iter),
+            FunctionChooser::Sum => iter.sum::<f64>() / energy as f64,
             _ => unimplemented!()
         }
     }
@@ -47,6 +50,9 @@ impl FunctionChooser{
             FunctionChooser::IndexMax => max_index(iter),
             FunctionChooser::IndexMin => min_index(iter),
             FunctionChooser::ValMin => min_val(iter),
+            FunctionChooser::Sum => {
+                iter.sum()
+            },
             FunctionChooser::LastIndexNotZero => {
                 let mut index = 0;
                 for (id, val) in iter.enumerate() {
@@ -101,6 +107,7 @@ impl FromStr for FunctionChooser {
             "indexmin" | "index_min" => Ok(FunctionChooser::IndexMin),
             "val_min" | "valmin" => Ok(FunctionChooser::ValMin),
             "lastindexnotzero" | "last_index_not_zero" | "last-index-not-zero" | "last" => Ok(FunctionChooser::LastIndexNotZero),
+            "sum" => Ok(FunctionChooser::Sum),
             _ => {
                 if s.contains("to") {
                     let mut iter = s.split("_");

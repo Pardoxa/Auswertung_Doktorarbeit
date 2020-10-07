@@ -81,9 +81,9 @@ pub(crate) fn parse_into_heatmap_f64
             .split(" ")
             .skip(2)
             .map(|v| v.parse::<f64>().unwrap() / max);
-        fun.f64_exec(iter)
+        fun.f64_exec(iter, energy)
     } else {
-        fun.f64_exec(iter)
+        fun.f64_exec(iter, energy)
     };
 
     let _ = heatmap.count(energy, val);
