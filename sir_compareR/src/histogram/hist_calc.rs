@@ -6,7 +6,7 @@ use crate::histogram::*;
 use rayon::iter::*;
 use indicatif::*;
 use average::Mean;
-use net_ensembles::sampling::bootstrap;
+use sampling::bootstrap_copyable;
 
 pub fn histogramm_parallel(hist_data: Histogram, num_threds: usize, p_bar: bool) -> Vec<(f64, f64)>
 {
@@ -28,18 +28,17 @@ pub fn histogramm_parallel(hist_data: Histogram, num_threds: usize, p_bar: bool)
     };
     pool.install(||
         {
-            
+            let mean = |data: &mut [f64]| {
+                let mean: Mean = data.iter().collect();
+                mean.mean()
+            };
             let v: Vec<_> = (0..len).collect();
             v.par_iter()
                 .map(
                     |&index| 
                     {
-                        let mean = |data: &Vec<&f64>| {
-                            let mean: Mean = data.iter().copied().collect();
-                            mean.mean()
-                        };
                         let rng = Pcg64::seed_from_u64(index as u64);
-                        let result = bootstrap(rng, 200, &hist_data.hist()[index],  mean);
+                        let result = bootstrap_copyable(rng, 200, &hist_data.hist()[index],  mean);
                         for b in bar.iter(){
                             b.inc(1);
                         }

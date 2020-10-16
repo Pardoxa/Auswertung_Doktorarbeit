@@ -1,4 +1,4 @@
-use net_ensembles::sampling::*;
+use sampling::*;
 
 
 #[derive(Debug, Clone)]

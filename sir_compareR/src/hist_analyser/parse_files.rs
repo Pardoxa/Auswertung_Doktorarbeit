@@ -3,7 +3,7 @@ use lzma::LzmaReader;
 use flate2::read::*;
 use std::io::*;
 use std::fs::*;
-use net_ensembles::sampling::*;
+use sampling::*;
 use std::result::Result;
 use std::path::Path;
 use indicatif::*;

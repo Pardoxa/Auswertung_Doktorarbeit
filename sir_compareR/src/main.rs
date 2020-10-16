@@ -8,7 +8,7 @@ mod histogram;
 use histogram::*;
 use std::io::*;
 use std::fs::*;
-use net_ensembles::sampling::*;
+use sampling::*;
 use either::*;
 mod heatmap2;
 mod hist_analyser;

@@ -1,7 +1,7 @@
 use ord_subset::{OrdSubset, OrdSubsetIterExt};
 use std::str::FromStr;
 use crate::heatmap2::*;
-use net_ensembles::sampling::*;
+use sampling::*;
 use either::*;
 use std::fmt;
 use fmt::Display;
