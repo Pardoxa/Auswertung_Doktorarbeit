@@ -1,0 +1,11 @@
+[package]
+name = "sir_plotter"
+version = "0.1.0"
+authors = ["Yannick Feld <yannick.feld@uol.de>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sir_models = { path = "../../sir_models" } # version 0.9.4 e.g. rev 21479e36a39359a926315cc1a4e8e1aac573d16a
+rand_pcg = { version = "0.2.1"}
