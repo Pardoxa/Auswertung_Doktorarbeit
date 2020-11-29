@@ -1,6 +1,6 @@
 [package]
 name = "sir_printer"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Yannick Feld <yannick.feld@uol.de>"]
 edition = "2018"
 

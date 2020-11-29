@@ -53,14 +53,14 @@ pub(crate) fn parse_helper(slice: &str) -> Vec<usize>
 
 fn print_curve<R: Read>(reader: R, opt: Opt){
     let reader = BufReader::new(reader);
-    let index = if let Some(index) = opt.curve {
-        index
-    } else {
-        0
-    };
-    let curve = if let Some(search_energy) = opt.energy
+    //let index = if let Some(index) = opt.curve {
+    //    index
+    //} else {
+    //    0
+    //};
+    let curves: Vec<_> = if let Some(search_energy) = opt.energy
     {
-        let curve = reader.lines()
+        reader.lines()
             .map(|v| v.unwrap())
             .filter(|line| 
                 !line.trim_start().starts_with("#") // skip comments
@@ -76,12 +76,10 @@ fn print_curve<R: Read>(reader: R, opt: Opt){
                 }else {
                     None
                 }
-            }).nth(index)
-            .unwrap();
-        curve
+            }).collect()
     } else {
         
-        let curve = reader.lines()
+        reader.lines()
             .map(|v| v.unwrap())
             .filter(|line| 
                 !line.trim_start().starts_with("#") // skip comments
@@ -89,23 +87,36 @@ fn print_curve<R: Read>(reader: R, opt: Opt){
             ).map(|line|{
                 let slice = line.trim();
                 parse_helper(slice)
-            }).nth(index)
-            .unwrap();
-        curve
+            }).collect()
     };
 
+    let size = curves[0].len();
     if opt.normed {
-        let max = *curve.iter().max().unwrap();
-        let max = max as f64;
-        for val in curve {
-            let v = val as f64 / max;
-            println!("{}", v);
+        let normed_curves: Vec<_> = curves.iter().map(|v| norm(v)).collect();
+        for j in 0..size {
+            for i in 0..normed_curves.len(){
+                print!("{} ", normed_curves[i][j]);
+            }
+            println!();
         }
     } else {
-        for val in curve {
-            println!("{}", val);
+        for j in 0..size {
+            for i in 0..curves.len(){
+                print!("{} ", curves[i][j]);
+            }
+            println!()
         }
     }
     
 
+}
+
+fn norm(curve: &[usize]) -> Vec<f64>
+{
+    let max = *curve.iter().max().unwrap() as f64;
+    let mut res = Vec::with_capacity(curve.len());
+    res.extend(
+        curve.into_iter().map(|&v| v as f64 / max)
+    );
+    res
 }
