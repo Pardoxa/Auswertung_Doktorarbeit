@@ -6,12 +6,15 @@ use analyse::*;
 mod stats;
 mod histogram;
 use histogram::*;
-use std::io::*;
+use std::{convert::TryInto, io::*};
 use std::fs::*;
 use sampling::*;
 use either::*;
 mod heatmap2;
 mod hist_analyser;
+
+mod heatmap_generic;
+use heatmap_generic::*;
 
 fn main() {
     let options = get_cmd_opts();
@@ -19,7 +22,8 @@ fn main() {
         Opt::Heatmap{..} => write_heatmap(options.into()),
         Opt::Histogram{..} => write_histogram(options.into()),
         Opt::Heatmap2{..} => write_heatmap2(options.into()),
-        Opt::Percent{..} => write_percent(options.into())
+        Opt::Percent{..} => write_percent(options.into()),
+        Opt::GenericHeatmap{..} => generate_heatmap(options.try_into().unwrap())
     };
 }
 
