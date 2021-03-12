@@ -1,4 +1,4 @@
-use std::io::*;
+use std::{io::*, ops::Div};
 use std::fs::*;
 use flate2::read::*;
 use std::path::Path;
@@ -136,8 +136,12 @@ where
 pub fn parse_and_group_all_files(opts: HeatmapOpts) -> Data
 {
     let mut data = Data::new_from_heatmap_options(&opts);
-    let index = |energy| {
-        (energy - 1) / opts.bin_size
+    let index = |energy: usize| {
+        if opts.no_subtract {
+            energy 
+        }else {
+            energy - 1
+        }.div(opts.bin_size)
     };
     for entry in glob::glob(&opts.files).unwrap().filter_map(Result::ok) {
         dbg!(&entry);

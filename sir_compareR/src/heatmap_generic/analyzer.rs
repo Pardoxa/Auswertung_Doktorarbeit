@@ -1,7 +1,7 @@
 use crate::heatmap_generic::*;
 use sampling::*;
 use glob;
-use std::{fs::*, io::{BufRead, BufReader, BufWriter, Read}, str::FromStr};
+use std::{fmt::Display, fs::*, io::{BufRead, BufReader, BufWriter, Read}, str::FromStr};
 use lzma::LzmaReader;
 use flate2::read::*;
 use num_traits::AsPrimitive;
@@ -50,8 +50,8 @@ pub fn work<X, Y, HX, HY>(
 )
     where HX: Histogram + HistogramVal<X>,
     HY: Histogram + HistogramVal<Y>,
-    X: FromStr + AsPrimitive<f64>,
-    Y: FromStr + AsPrimitive<f64>
+    X: FromStr + AsPrimitive<f64> + Display,
+    Y: FromStr + AsPrimitive<f64> + Display
 {
     let borders = hist_x.borders_clone().unwrap();
     let x_min = borders.first().unwrap().as_();
@@ -102,8 +102,13 @@ pub fn work<X, Y, HX, HY>(
     
     settings
         .x_axis(GnuplotAxis::new(x_min, x_max, 5))
-        .pallet(GnuplotPallet::PresetHSV)
         .y_axis(GnuplotAxis::new(y_min, y_max, 5));
+
+    if opts.rgb {
+        settings.pallet(GnuplotPallet::PresetRGB);
+    } else {
+        settings.pallet(GnuplotPallet::PresetHSV);
+    }
     
     println!("creating {}", &opts.gnuplot_name);
     let file = File::create(opts.gnuplot_name).unwrap();
@@ -135,8 +140,8 @@ pub fn count_into_heatmap<X, Y, Hx, Hy, R>(
         opts: HeatmapGenericOpts
     )
 where R: Read,
-    X: FromStr,
-    Y: FromStr,
+    X: FromStr + Display + Copy,
+    Y: FromStr + Display + Copy,
     Hx: HistogramVal<X>,
     Hy: HistogramVal<Y>
 {
@@ -174,7 +179,15 @@ where R: Read,
                         smaller.parse::<Y>().ok().unwrap()
                     )
                 };
-                let _ = heatmap.count(val_x, val_y);
+                match heatmap.count(val_x, val_y)
+                {
+                    Ok(..) => {},
+                    Err(error) => {
+                        if !opts.supress_hist_error  {
+                            println!("{:?} x: {}, y: {}", error, val_x, val_y);
+                        }
+                    }
+                }
             }
         )
 }
