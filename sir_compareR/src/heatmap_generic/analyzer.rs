@@ -156,8 +156,9 @@ where R: Read,
         .filter(
             |line|
             {
-                !line.trim_start().starts_with("#") // skip comments
-                && !line.is_empty()
+                let trimmed = line.trim_start();
+                !trimmed.starts_with("#") // skip comments
+                && !trimmed.is_empty()
             }
         ).step_by(opts.every.get())
         .for_each(
