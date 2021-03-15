@@ -31,7 +31,30 @@ fn main() {
 fn write_heatmap(opts: HeatmapOpts)
 {
 
-    let sorted_data = parse_files::parse_and_group_all_files(opts.clone());
+    let mut sorted_data = parse_files::parse_and_group_all_files(opts.clone());
+    println!("average bin entries: {}", sorted_data.average_entries());
+    let num = if sorted_data.data().len() < 5 {
+        sorted_data.data().len()
+    } else {
+        5
+    };
+    println!("max {} entries: {:?}", num, sorted_data.max_n_entries(num));
+    println!("min {} entries: {:?}", num, sorted_data.min_n_entries(num));
+    if opts.print_bin_lens 
+    {
+        sorted_data.print_lens();
+    }
+    if let Some(maximum) = opts.max_entries {
+        sorted_data.limit_entries(maximum);
+        println!("new max {} entries: {:?}", num, sorted_data.max_n_entries(num));
+        println!("new average bin entries: {}", sorted_data.average_entries());
+        if opts.print_bin_lens 
+        {
+            println!("After limiting:");
+            sorted_data.print_lens();
+        }
+    }
+
     let matr =
     match opts.j  {
         0 => {

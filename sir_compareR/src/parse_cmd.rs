@@ -56,6 +56,14 @@ pub enum Opt
         /// min number of curves to be used in calculation
         cutoff: usize,
 
+        /// max number of bin entries 
+        #[structopt(long)]
+        max_entries: Option<NonZeroUsize>,
+
+        /// print number of entries in each bin
+        #[structopt(long)]
+        print_bin_lens: bool,
+
         #[structopt(long)]
         /// do not norm curves
         no_norm: bool,
@@ -505,6 +513,8 @@ pub struct HeatmapOpts{
     pub data_mode: DataMode,
     pub norm: bool,
     pub no_subtract: bool,
+    pub max_entries: Option<NonZeroUsize>,
+    pub print_bin_lens: bool
 }
 
 impl HeatmapOpts{
@@ -582,7 +592,9 @@ impl From<Opt> for HeatmapOpts{
                 mode,
                 no_norm,
                 n_real,
-                no_subtract
+                no_subtract,
+                max_entries,
+                print_bin_lens,
             } => {
                 if n % bins != 0 {
                     eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
@@ -616,7 +628,9 @@ impl From<Opt> for HeatmapOpts{
                     data_mode,
                     norm: !no_norm,
                     n_real,
-                    no_subtract
+                    no_subtract,
+                    max_entries,
+                    print_bin_lens,
                 }
             },
             _ => unreachable!()

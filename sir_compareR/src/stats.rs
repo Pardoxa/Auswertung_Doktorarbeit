@@ -1,8 +1,10 @@
 use crate::analyse::*;
 use crate::*;
-use std::io::*;
+use std::{io::*, num::NonZeroUsize};
 use std::fs::*;
-use std::env;
+use std::{env, cmp::Reverse};
+use rand::prelude::SliceRandom;
+use rand_pcg::Pcg64;
 use rgsl::statistics::correlation;
 use std::ops::*;
 use rayon::prelude::*;
@@ -245,6 +247,64 @@ impl Data{
             self.data[i][k].len()
         )
 
+    }
+
+    pub fn average_entries(&self) -> usize
+    {
+        self.data
+            .iter()
+            .map(|e| e.len())
+            .sum::<usize>() / self.data.len()
+    }
+
+    pub fn max_n_entries(&self, n: usize) -> Vec<usize>
+    {
+        let mut lens: Vec<_> = self.data
+            .iter()
+            .map(|e| e.len())
+            .collect();
+        lens.sort_unstable_by_key(|&e| Reverse(e));
+        lens.truncate(n);
+        lens.shrink_to_fit();
+        lens
+    }
+
+    pub fn print_lens(&self) {
+        print!("lens:");
+        self.data.iter()
+            .for_each(|e| print!(" {}", e.len()));
+        println!()
+    }
+
+    pub fn min_n_entries(&self, n: usize) -> Vec<usize>
+    {
+        let mut lens: Vec<_> = self.data
+            .iter()
+            .map(|e| e.len())
+            .collect();
+        
+        lens.sort_unstable();
+        lens.truncate(n);
+        lens.shrink_to_fit();
+        lens
+    }
+
+    pub fn limit_entries(&mut self, maximum: NonZeroUsize)
+    {
+        let mut rng = Pcg64::new(0xcafef00dd15ea5e5, 0xa02bdbf7bb3c0a7ac28fa16a64abf96);
+        self.data
+            .iter_mut()
+            .filter(|v| v.len() > maximum.get())
+            .for_each(
+                |v|
+                {
+                    v.shuffle(&mut rng);
+                    v.truncate(maximum.get());
+                    v.shrink_to_fit();
+                    v.iter_mut()
+                        .for_each(|v| v.shrink_to_fit());
+                }
+            );
     }
 
 }
