@@ -12,6 +12,7 @@ use sampling::*;
 use either::*;
 mod heatmap2;
 mod hist_analyser;
+use std::process::Command;
 
 mod heatmap_generic;
 use heatmap_generic::*;
@@ -120,7 +121,7 @@ fn write_heatmap2(opts: Heatmap2Opts)
 
             heat.gnuplot(
                 writer,
-                filename,
+                &filename,
                 settings
             ).unwrap();
         },
@@ -142,11 +143,22 @@ fn write_heatmap2(opts: Heatmap2Opts)
 
             heat.gnuplot(
                 writer,
-                filename,
+                &filename,
                 settings
             ).unwrap();
         }
     };
+    if opts.gnuplot_exec {
+        match Command::new("gnuplot")
+            .arg(filename)
+            .output()
+        {
+            Ok(_) => {},
+            Err(error) => {
+                eprintln!("{}", error.to_string())
+            }
+        }
+    }
 }
 
 fn write_percent(opts: PercentOpts){

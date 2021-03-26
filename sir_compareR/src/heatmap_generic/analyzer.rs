@@ -1,7 +1,7 @@
 use crate::heatmap_generic::*;
 use sampling::*;
 use glob;
-use std::{fmt::Display, fs::*, io::{BufRead, BufReader, BufWriter, Read}, str::FromStr};
+use std::{fmt::Display, fs::*, io::{BufRead, BufReader, BufWriter, Read}, str::FromStr, process::Command};
 use lzma::LzmaReader;
 use flate2::read::*;
 use num_traits::AsPrimitive;
@@ -111,7 +111,7 @@ pub fn work<X, Y, HX, HY>(
     }
     
     println!("creating {}", &opts.gnuplot_name);
-    let file = File::create(opts.gnuplot_name).unwrap();
+    let file = File::create(&opts.gnuplot_name).unwrap();
     let writer = BufWriter::new(file);
     println!("Using gnuplot will generate: {}", &opts.gnuplot_output_name);
     let total = heatmap.total();
@@ -131,6 +131,18 @@ pub fn work<X, Y, HX, HY>(
     
     println!("fraction of misses, i.e., outside heatmap: {}", frac);
     println!("Total: {}", total);
+
+    if opts.gnuplot_exec {
+        match Command::new("gnuplot")
+            .arg(opts.gnuplot_name)
+            .output()
+        {
+            Ok(_) => {},
+            Err(error) => {
+                eprintln!("{}", error.to_string())
+            }
+        }
+    }
 
 }
 

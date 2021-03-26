@@ -17,7 +17,8 @@ pub struct HeatmapGenericOpts
     pub gnuplot_name: String,
     pub gnuplot_output_name: String,
     pub rgb: bool,
-    pub supress_hist_error: bool
+    pub supress_hist_error: bool,
+    pub gnuplot_exec: bool
 }
 
 impl TryFrom<Opt> for HeatmapGenericOpts
@@ -37,10 +38,11 @@ impl TryFrom<Opt> for HeatmapGenericOpts
                 x_label,
                 y_label,
                 non_normalized,
-                mut gnuplot_name,
+                mut name,
                 gnuplot_output_name,
                 rgb,
-                supress_hist_error
+                supress_hist_error,
+                gnuplot,
             } => {
                 if x_index == y_index {
                     Err("Indizes are not allowed to be identical")
@@ -49,7 +51,7 @@ impl TryFrom<Opt> for HeatmapGenericOpts
                     {
                         Some(name) => name,
                         None => {
-                            let mut name = gnuplot_name.as_str();
+                            let mut name = name.as_str();
                             if name.ends_with(".gp")
                             {
                                 name = &name[..name.len()-3];
@@ -57,9 +59,9 @@ impl TryFrom<Opt> for HeatmapGenericOpts
                             format!("{}.pdf", name)
                         }
                     };
-                    if !gnuplot_name.ends_with(".gp")
+                    if !name.ends_with(".gp")
                     {
-                        gnuplot_name = format!("{}.gp", gnuplot_name);
+                        name = format!("{}.gp", name);
                     }
                     Ok(
                         Self{
@@ -72,10 +74,11 @@ impl TryFrom<Opt> for HeatmapGenericOpts
                             y_label,
                             x_label,
                             non_normalized,
-                            gnuplot_name,
+                            gnuplot_name: name,
                             gnuplot_output_name: output,
                             rgb,
                             supress_hist_error,
+                            gnuplot_exec: gnuplot,
                         }
                     )
                 }  
