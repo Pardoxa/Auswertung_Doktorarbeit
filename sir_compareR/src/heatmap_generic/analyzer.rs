@@ -1,10 +1,12 @@
 use crate::heatmap_generic::*;
 use sampling::*;
 use glob;
-use std::{fmt::Display, fs::*, io::{BufRead, BufReader, BufWriter, Read}, str::FromStr, process::Command};
+use std::{fmt::Display, fs::*, io::{BufRead, BufReader, BufWriter, Read, Write}, str::FromStr, process::Command};
 use lzma::LzmaReader;
 use flate2::read::*;
 use num_traits::AsPrimitive;
+use crate::stats;
+
 
 pub fn generate_heatmap(opts: HeatmapGenericOpts)
 {
@@ -112,11 +114,13 @@ pub fn work<X, Y, HX, HY>(
     
     println!("creating {}", &opts.gnuplot_name);
     let file = File::create(&opts.gnuplot_name).unwrap();
-    let writer = BufWriter::new(file);
+    let mut writer = BufWriter::new(file);
     println!("Using gnuplot will generate: {}", &opts.gnuplot_output_name);
     let total = heatmap.total();
     let misses = heatmap.total_misses();
     let frac = misses as f64 / total as f64;
+
+    writeln!(&mut writer, "#{}", stats::get_cmd_args()).unwrap();
 
     if opts.non_normalized
     {
