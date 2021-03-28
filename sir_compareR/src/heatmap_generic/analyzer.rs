@@ -63,6 +63,8 @@ pub fn work<X, Y, HX, HY>(
     let y_max = borders.last().unwrap().as_();
     let mut heatmap = HeatmapU::<HX, HY>::new(hist_x, hist_y);
     
+    let mut files = Vec::new();
+
     glob::glob(&opts.files)
         .unwrap()
         .filter_map(Result::ok)
@@ -89,6 +91,7 @@ pub fn work<X, Y, HX, HY>(
                         count_into_heatmap(file, &mut heatmap, opts.clone())
                     }
                 }
+                files.push(p);
             }
         );
     let mut settings = GnuplotSettings::new();
@@ -121,6 +124,15 @@ pub fn work<X, Y, HX, HY>(
     let frac = misses as f64 / total as f64;
 
     writeln!(&mut writer, "#{}", stats::get_cmd_args()).unwrap();
+    writeln!(&mut writer, "#total: {} misses: {} -> frac {}", total, misses, frac).unwrap();
+    files.into_iter()
+        .for_each(
+            |p| 
+            {
+                let realpath = canonicalize(p).unwrap();
+                writeln!(&mut writer, "#{}", realpath.display()).unwrap()
+            }
+        );
 
     if opts.non_normalized
     {
