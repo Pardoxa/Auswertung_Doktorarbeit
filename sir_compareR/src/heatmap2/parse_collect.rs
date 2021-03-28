@@ -5,7 +5,7 @@ use std::io::*;
 use std::fs::*;
 use sampling::*;
 use std::result::Result;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use indicatif::*;
 use rayon::prelude::*;
 use crate::heatmap2::*;
@@ -122,7 +122,7 @@ pub(crate) fn parse_into_heatmap_usize
     let _ = heatmap.count(energy, val);
 }
 
-pub fn parse_and_count_all_files(opts: &Heatmap2Opts) -> EitherH
+pub fn parse_and_count_all_files(opts: &Heatmap2Opts) -> (Vec<PathBuf>, EitherH)
 {
     
     let files: Vec<_> = glob::glob(&opts.files)
@@ -156,7 +156,7 @@ pub fn parse_and_count_all_files(opts: &Heatmap2Opts) -> EitherH
             }
         }
     }
-    heatmap_origin
+    (files, heatmap_origin)
 }
 
 

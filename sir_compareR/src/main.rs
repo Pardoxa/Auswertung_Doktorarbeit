@@ -90,12 +90,19 @@ fn write_heatmap2(opts: Heatmap2Opts)
     let filename = opts.generate_filename("h2.gp");
     println!("creating: {}", &filename);
 
-    let heatmap = heatmap2::parse_and_count_all_files(&opts);
+    let (files, heatmap) = heatmap2::parse_and_count_all_files(&opts);
 
     let file = File::create(&filename).unwrap();
     let mut writer = BufWriter::new(file);
 
     writeln!(writer, "#{}", stats::get_cmd_args()).unwrap();
+    files.into_iter()
+        .map(canonicalize)
+        .for_each(|p|
+            {
+                writeln!(writer, "#{}", p.unwrap().display()).unwrap();
+            }
+        );
 
     let mut settings = GnuplotSettings::new();
     let y_lab = format!("{}", opts.fun);
