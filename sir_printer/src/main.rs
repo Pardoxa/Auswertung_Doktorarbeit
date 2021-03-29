@@ -1,29 +1,67 @@
 use structopt::StructOpt;
-use std::io::{Read, BufRead, BufReader};
+use std::{io::{BufRead, BufReader, Read, Write}, num::NonZeroUsize};
 use std::fs::File;
+use std::env;
 use flate2::read::*;
 use lzma::LzmaReader;
+use glob;
 
 fn main() {
     let opt = Opt::from_args();
-    let file = File::open(&opt.filename).unwrap();
-    if opt.filename.ends_with(".gz"){
-        let reader = GzDecoder::new(file);
-        print_curve(reader, opt);
-    } else if opt.filename.ends_with(".xz") {
-        let reader = LzmaReader::new_decompressor(file).unwrap();
-        print_curve(reader, opt);
-    } else {
-        print_curve(file, opt);
+
+    println!("#v{}", env!("CARGO_PKG_VERSION"));
+    print!("#");
+    for arg in env::args() {
+        print!(" {}", arg);
     }
+    println!();
+    let mut curves = Vec::with_capacity(200000);
+    for filename in glob::glob(&opt.filename)
+        .unwrap()
+        .filter_map(Result::ok)
+    {
+        let extension = filename.extension()
+            .unwrap()
+            .to_str()
+            .unwrap();
+        let file = match File::open(filename.as_path())
+        {
+            Ok(f) => f,
+            Err(e) => 
+            {
+                eprintln!("IO ERROR: {} -> skipping {}", e, filename.display());
+                continue
+            }
+        };
+        let opt = opt.clone();
+        
+        match extension 
+        {
+            "gz" => {
+                let reader = GzDecoder::new(file);
+                parse_curve(reader, opt, &mut curves);
+            },
+            "xz" => {
+                let reader = LzmaReader::new_decompressor(file).unwrap();
+                parse_curve(reader, opt, &mut curves);
+            },
+            _ => {
+                parse_curve(file, opt, &mut curves);
+            }
+        }
+    }
+    let len = curves.len();
+    println!("# curves: {}", len);
+    print_curves(curves, opt);
+    println!("# curves: {}", len);
 }
 
 
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Clone)]
 /// Prints line of .mes file for plotting
 pub struct Opt{
-    /// name of file
+    /// name/glob of file(s)
     #[structopt(short, long)]
     pub filename: String,
 
@@ -39,7 +77,11 @@ pub struct Opt{
 
     /// Norm the curves?
     #[structopt(short, long)]
-    pub normed: bool
+    pub normed: bool,
+
+    /// every nth curve
+    #[structopt(short, long, default_value="1")]
+    pub every: NonZeroUsize
 }
 
 pub(crate) fn parse_helper(slice: &str) -> Vec<usize>
@@ -51,21 +93,20 @@ pub(crate) fn parse_helper(slice: &str) -> Vec<usize>
         .collect()
 }
 
-fn print_curve<R: Read>(reader: R, opt: Opt){
+fn parse_curve<R: Read>(reader: R, opt: Opt, curves: &mut Vec<Vec<usize>>){
     let reader = BufReader::new(reader);
-    //let index = if let Some(index) = opt.curve {
-    //    index
-    //} else {
-    //    0
-    //};
-    let curves: Vec<_> = if let Some(search_energy) = opt.energy
+    if let Some(search_energy) = opt.energy
     {
-        reader.lines()
+        curves.extend(
+            reader.lines()
             .map(|v| v.unwrap())
-            .filter(|line| 
-                !line.trim_start().starts_with("#") // skip comments
-                    && !line.is_empty()
-            ).filter_map(|line|{
+            .filter(|line| {
+                    let t = line.trim_start();
+                    !t.starts_with("#") // skip comments
+                    && !t.is_empty()
+                }
+            ).step_by(opt.every.get())
+            .filter_map(|line|{
                 let slice = line.trim();
                 let mut it = slice.split(" ");
                 let energy = it.next().unwrap();
@@ -76,39 +117,88 @@ fn print_curve<R: Read>(reader: R, opt: Opt){
                 }else {
                     None
                 }
-            }).collect()
+            })     
+        )
+
     } else {
         
-        reader.lines()
+        curves.extend(
+            reader.lines()
             .map(|v| v.unwrap())
-            .filter(|line| 
-                !line.trim_start().starts_with("#") // skip comments
-                    && !line.is_empty()
-            ).map(|line|{
+            .filter(|line| {
+                    let t = line.trim_start();
+                    !t.starts_with("#") // skip comments
+                    && !t.is_empty()
+                }
+            ).step_by(opt.every.get())
+            .map(|line|{
                 let slice = line.trim();
                 parse_helper(slice)
-            }).collect()
-    };
+            })
+        )
 
-    let size = curves[0].len();
-    if opt.normed {
-        let normed_curves: Vec<_> = curves.iter().map(|v| norm(v)).collect();
-        for j in 0..size {
-            for i in 0..normed_curves.len(){
-                print!("{} ", normed_curves[i][j]);
+    };
+}
+
+fn print_curves(curves: Vec<Vec<usize>>, opt: Opt)
+{
+    let stdout = std::io::stdout();
+    let mut out = stdout.lock();
+    match opt.curve
+    {
+        Some(index) => {
+            match curves.get(index)
+            {
+                Some(c) => {
+                    if opt.normed {
+                        let normed = norm(c);
+                        for val in normed 
+                        {
+                            dtoa::write(&mut out, val).unwrap();
+                            writeln!(&mut out).unwrap();
+                        }
+                    }else {
+                        for &val in c 
+                        {
+                            itoa::write(&mut out, val).unwrap();
+                            writeln!(&mut out).unwrap();
+                        }
+                    }
+                },
+                None => {
+                    eprintln!("curve {} not found! :/", index);
+                }
             }
-            println!();
-        }
-    } else {
-        for j in 0..size {
-            for i in 0..curves.len(){
-                print!("{} ", curves[i][j]);
+        },
+        None => {
+            if let Some(c) = curves.get(0) {
+                let size = c.len();
+                if opt.normed {
+                    let normed_curves: Vec<_> = curves
+                        .into_iter()
+                        .map(|v| norm(&v))
+                        .collect();
+                    for j in 0..size {
+                        for i in 0..normed_curves.len(){
+                            dtoa::write(&mut out, normed_curves[i][j]).unwrap();
+                            write!(&mut out, " ").unwrap();
+                        }
+                        writeln!(&mut out).unwrap();
+                    }
+                } else {
+                    for j in 0..size {
+                        for i in 0..curves.len(){
+                            itoa::write(&mut out, curves[i][j]).unwrap();
+                            write!(&mut out, " ").unwrap();
+                        }
+                        writeln!(&mut out).unwrap();
+                    }
+                }
+            }else {
+                eprintln!("NO curves found :(");
             }
-            println!()
         }
     }
-    
-
 }
 
 fn norm(curve: &[usize]) -> Vec<f64>
