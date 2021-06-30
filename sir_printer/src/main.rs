@@ -15,6 +15,7 @@ fn main() {
         print!(" {}", arg);
     }
     println!();
+    println!("# {:#?}", env::current_dir().unwrap().as_os_str());
     let mut curves = Vec::with_capacity(200000);
     for filename in glob::glob(&opt.filename)
         .unwrap()
