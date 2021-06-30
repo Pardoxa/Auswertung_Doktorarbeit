@@ -80,7 +80,7 @@ pub struct Opt{
     pub normed: bool,
 
     /// every nth curve
-    #[structopt(short, long, default_value="1")]
+    #[structopt(long, default_value="1")]
     pub every: NonZeroUsize
 }
 
