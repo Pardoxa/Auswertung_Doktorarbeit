@@ -106,10 +106,17 @@ fn write_heatmap2(opts: Heatmap2Opts)
 
     let mut settings = GnuplotSettings::new();
     let y_lab = format!("{}", opts.fun);
+    let palett = if opts.rgb {
+        GnuplotPallet::PresetRGB
+    } else {
+        let mut palett = CubeHelixParameter::default();
+        palett.gamma(0.65);
+        GnuplotPallet::CubeHelix(palett)
+    };
     settings.x_label("E")
         .y_label(y_lab)
         .x_axis(GnuplotAxis::new(0.0, 1.0, 5))
-        .pallet(GnuplotPallet::PresetRGB);
+        .pallet(palett);
 
     match heatmap {
         Left(heat) => {

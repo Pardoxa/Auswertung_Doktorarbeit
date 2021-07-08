@@ -108,11 +108,12 @@ pub fn work<X, Y, HX, HY>(
     settings
         .x_axis(GnuplotAxis::new(x_min, x_max, 5))
         .y_axis(GnuplotAxis::new(y_min, y_max, 5));
-
     if opts.rgb {
         settings.pallet(GnuplotPallet::PresetRGB);
     } else {
-        settings.pallet(GnuplotPallet::PresetHSV);
+        let mut palett = CubeHelixParameter::default();
+        palett.reverse(true);
+        settings.pallet(GnuplotPallet::CubeHelix(palett));
     }
     
     println!("creating {}", &opts.gnuplot_name);

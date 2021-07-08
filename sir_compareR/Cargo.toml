@@ -1,6 +1,6 @@
 [package]
 name = "sir_compare_r"
-version = "0.8.4"
+version = "0.8.5"
 authors = ["Yannick Feld <yannick.feld@uol.de>"]
 edition = "2018"
 
@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 flate2 = { version = "1.0", features = ["cloudflare_zlib"], default-features = false }
-sampling = { git = "https://github.com/Pardoxa/sampling", rev = "b7ba896bbf07091d2d4eb7ef2b618559ce5d024b", default-features = false, features = ["bootstrap"] }
+sampling = { git = "https://github.com/Pardoxa/sampling", rev = "8bc7684bde70a7619f706f0ed6476ebc2d538436", default-features = false, features = ["bootstrap"] }
 #sampling = {path = "../../sampling", default-features = false, features = ["bootstrap"] }
 structopt = "0.3"
 glob = "0.3.0"

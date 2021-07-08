@@ -162,6 +162,10 @@ pub enum Opt
         /// 'x_to_y' where x and y are f64
         #[structopt(long)]
         fun: FunctionChooser,
+
+        /// Use rgb color palett
+        #[structopt(long)]
+        rgb: bool,
         
     },
     GenericHeatmap
@@ -362,6 +366,7 @@ pub struct Heatmap2Opts
     pub normed: bool,
     pub heatmap_builder: HeatmapBuilder,
     pub gnuplot_exec: bool,
+    pub rgb: bool
 }
 
 impl Heatmap2Opts{
@@ -397,6 +402,7 @@ impl From<Opt> for Heatmap2Opts{
                 heatmap,
                 bins,
                 gnuplot,
+                rgb,
             } => {
                 if n % bins != 0 {
                     eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
@@ -424,6 +430,7 @@ impl From<Opt> for Heatmap2Opts{
                     suffix,
                     normed,
                     gnuplot_exec: gnuplot,
+                    rgb,
                 }
             },
             _ => unreachable!()
