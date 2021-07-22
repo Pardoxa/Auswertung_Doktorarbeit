@@ -1,5 +1,5 @@
 use std::{convert::TryFrom, str::FromStr, num::*};
-use crate::parse_cmd::Opt;
+use crate::parse_cmd::{GnuPalett, Opt};
 use sampling::*;
 
 #[derive(Debug, Clone)]
@@ -16,9 +16,9 @@ pub struct HeatmapGenericOpts
     pub non_normalized: bool,
     pub gnuplot_name: String,
     pub gnuplot_output_name: String,
-    pub rgb: bool,
     pub supress_hist_error: bool,
-    pub gnuplot_exec: bool
+    pub gnuplot_exec: bool,
+    pub palett: GnuPalett
 }
 
 impl TryFrom<Opt> for HeatmapGenericOpts
@@ -40,9 +40,9 @@ impl TryFrom<Opt> for HeatmapGenericOpts
                 non_normalized,
                 mut name,
                 gnuplot_output_name,
-                rgb,
                 supress_hist_error,
                 gnuplot,
+                palett
             } => {
                 if x_index == y_index {
                     Err("Indizes are not allowed to be identical")
@@ -76,9 +76,9 @@ impl TryFrom<Opt> for HeatmapGenericOpts
                             non_normalized,
                             gnuplot_name: name,
                             gnuplot_output_name: output,
-                            rgb,
                             supress_hist_error,
                             gnuplot_exec: gnuplot,
+                            palett,
                         }
                     )
                 }  

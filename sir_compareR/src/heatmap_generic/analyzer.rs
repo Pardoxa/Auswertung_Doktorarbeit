@@ -1,7 +1,7 @@
 use crate::heatmap_generic::*;
 use sampling::*;
 use glob;
-use std::{fmt::Display, fs::*, io::{BufRead, BufReader, BufWriter, Read, Write}, str::FromStr, process::Command};
+use std::{fmt::Display, fs::*, io::{BufRead, BufReader, BufWriter, Read, Write}, process::Command, str::FromStr};
 use lzma::LzmaReader;
 use flate2::read::*;
 use num_traits::AsPrimitive;
@@ -107,14 +107,8 @@ pub fn work<X, Y, HX, HY>(
     
     settings
         .x_axis(GnuplotAxis::new(x_min, x_max, 5))
-        .y_axis(GnuplotAxis::new(y_min, y_max, 5));
-    if opts.rgb {
-        settings.pallet(GnuplotPallet::PresetRGB);
-    } else {
-        let mut palett = CubeHelixParameter::default();
-        palett.reverse(true);
-        settings.pallet(GnuplotPallet::CubeHelix(palett));
-    }
+        .y_axis(GnuplotAxis::new(y_min, y_max, 5))
+        .pallet(opts.palett.into_inner());
     
     println!("creating {}", &opts.gnuplot_name);
     let file = File::create(&opts.gnuplot_name).unwrap();

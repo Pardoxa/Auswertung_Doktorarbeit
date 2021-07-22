@@ -1,4 +1,6 @@
 use structopt::StructOpt;
+use std::ops::Deref;
+use std::str::FromStr;
 use std::{convert::*, num::NonZeroUsize};
 use std::process::exit;
 use std::collections::*;
@@ -6,6 +8,7 @@ use crate::parse_files::*;
 use crate::histogram::*;
 use crate::heatmap2::*;
 use crate::heatmap_generic::HistBuilder;
+use sampling::heatmap::{GnuplotPallet, CubeHelixParameter};
 
 const COMPRESSION_SUFFIX: [&str; 2]= ["gz", "xz"];
 
@@ -222,13 +225,13 @@ pub enum Opt
         #[structopt(long, short)]
         gnuplot: bool,
 
-        /// use rgb color space
-        #[structopt(long)]
-        rgb: bool,
-
         /// Do not output hist errors
-        #[structopt(long)]
-        supress_hist_error: bool
+        #[structopt(long, short)]
+        supress_hist_error: bool,
+
+        /// Which palett to use. "r" for rgb, "h" for hsv and "c" for cubehelix. Use "c,r" for cubehelix reversed
+        #[structopt(long, short, default_value="r")]
+        palett: GnuPalett
     },
     Percent {
         /// number of nodes
@@ -652,6 +655,73 @@ impl From<Opt> for HeatmapOpts{
                 }
             },
             _ => unreachable!()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GnuPalett{
+    palett: GnuplotPallet
+}
+
+impl GnuPalett{
+    pub fn into_inner(self) -> GnuplotPallet{
+        self.palett
+    }
+}
+
+impl Default for GnuPalett{
+    fn default() -> Self {
+        GnuPalett{palett: GnuplotPallet::PresetRGB}
+    }
+}
+
+impl Deref for GnuPalett{
+    type Target = GnuplotPallet;
+    fn deref(&self) -> &Self::Target {
+        &self.palett
+    }
+}
+
+impl FromStr for GnuPalett
+{
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut iter = s.split(",");
+        let first = match iter.next(){
+            Some(val) => val,
+            None => return Err("No option given")
+        };
+
+        let lower = first.to_lowercase();
+
+        return match lower.as_str() {
+            "r" | "rgb" => {
+                Ok(
+                    GnuPalett{palett: GnuplotPallet::PresetRGB}
+                )
+            },
+            "h" | "hsv" => {
+                Ok(
+                    GnuPalett{palett: GnuplotPallet::PresetHSV}
+                )
+            },
+            "c" | "cubehelix" => {
+                let mut params = CubeHelixParameter::default();
+                for val in iter {
+                    let l = val.to_lowercase();
+                    if l.starts_with("r") || l.starts_with("reverse"){
+                        params.reverse(true);
+                    }
+                }
+                Ok(
+                    GnuPalett{palett: GnuplotPallet::CubeHelix(params)}
+                )
+            },
+            _ => {
+                Err("Option unknown. Use 'r' for rgb, 'h' for hsv and 'c' for cubehelix. You can also use 'c,r' for cubehelix reversed")
+            }
         }
     }
 }
