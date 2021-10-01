@@ -108,7 +108,7 @@ pub fn work<X, Y, HX, HY>(
     settings
         .x_axis(GnuplotAxis::new(x_min, x_max, 5))
         .y_axis(GnuplotAxis::new(y_min, y_max, 5))
-        .pallet(opts.palett.into_inner());
+        .palette(opts.palett.into_inner());
     
     println!("creating {}", &opts.gnuplot_name);
     let file = File::create(&opts.gnuplot_name).unwrap();

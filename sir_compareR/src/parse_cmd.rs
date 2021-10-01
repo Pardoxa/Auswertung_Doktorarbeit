@@ -8,7 +8,7 @@ use crate::parse_files::*;
 use crate::histogram::*;
 use crate::heatmap2::*;
 use crate::heatmap_generic::HistBuilder;
-use sampling::heatmap::{GnuplotPallet, CubeHelixParameter};
+use sampling::heatmap::{GnuplotPalette, CubeHelixParameter};
 
 const COMPRESSION_SUFFIX: [&str; 2]= ["gz", "xz"];
 
@@ -661,23 +661,23 @@ impl From<Opt> for HeatmapOpts{
 
 #[derive(Debug, Clone)]
 pub struct GnuPalett{
-    palett: GnuplotPallet
+    palett: GnuplotPalette
 }
 
 impl GnuPalett{
-    pub fn into_inner(self) -> GnuplotPallet{
+    pub fn into_inner(self) -> GnuplotPalette{
         self.palett
     }
 }
 
 impl Default for GnuPalett{
     fn default() -> Self {
-        GnuPalett{palett: GnuplotPallet::PresetRGB}
+        GnuPalett{palett: GnuplotPalette::PresetRGB}
     }
 }
 
 impl Deref for GnuPalett{
-    type Target = GnuplotPallet;
+    type Target = GnuplotPalette;
     fn deref(&self) -> &Self::Target {
         &self.palett
     }
@@ -699,12 +699,12 @@ impl FromStr for GnuPalett
         return match lower.as_str() {
             "r" | "rgb" => {
                 Ok(
-                    GnuPalett{palett: GnuplotPallet::PresetRGB}
+                    GnuPalett{palett: GnuplotPalette::PresetRGB}
                 )
             },
             "h" | "hsv" => {
                 Ok(
-                    GnuPalett{palett: GnuplotPallet::PresetHSV}
+                    GnuPalett{palett: GnuplotPalette::PresetHSV}
                 )
             },
             "c" | "cubehelix" => {
@@ -716,7 +716,7 @@ impl FromStr for GnuPalett
                     }
                 }
                 Ok(
-                    GnuPalett{palett: GnuplotPallet::CubeHelix(params)}
+                    GnuPalett{palett: GnuplotPalette::CubeHelix(params)}
                 )
             },
             _ => {
