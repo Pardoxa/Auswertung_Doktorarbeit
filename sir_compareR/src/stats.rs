@@ -1,6 +1,6 @@
 use crate::analyse::*;
 use crate::*;
-use std::{io::*, num::NonZeroUsize};
+use std::{io::*, num::NonZeroUsize, sync::Mutex};
 use std::fs::*;
 use std::{env, cmp::Reverse};
 use rand::prelude::SliceRandom;
@@ -9,6 +9,15 @@ use rgsl::statistics::correlation;
 use std::ops::*;
 use rayon::prelude::*;
 use lzma::LzmaWriter;
+use lazy_static::*;
+
+lazy_static! {
+    static ref  LIMIT_RNG: Mutex<Pcg64> = 
+    {
+        Mutex::new(Pcg64::new(0xcafef00dd15ea5e5, 0xa02bdbf7bb3c0a7ac28fa16a64abf96))
+    };
+}
+
 
 #[derive(Clone)]
 pub struct Stats{
@@ -292,14 +301,15 @@ impl Data{
 
     pub fn limit_entries(&mut self, maximum: NonZeroUsize)
     {
-        let mut rng = Pcg64::new(0xcafef00dd15ea5e5, 0xa02bdbf7bb3c0a7ac28fa16a64abf96);
+        let mut rng_lock = LIMIT_RNG.lock()
+            .unwrap();
         self.data
             .iter_mut()
             .filter(|v| v.len() > maximum.get())
             .for_each(
                 |v|
                 {
-                    v.shuffle(&mut rng);
+                    v.shuffle(rng_lock.deref_mut());
                     v.truncate(maximum.get());
                     v.shrink_to_fit();
                     v.iter_mut()
