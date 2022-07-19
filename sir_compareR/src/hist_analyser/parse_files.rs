@@ -29,7 +29,7 @@ where
         .map(|v| v.unwrap())
         .filter(|line| 
             {
-                !line.trim_start().starts_with("#") // skip comments
+                !line.trim_start().starts_with('#') // skip comments
                 && !line.is_empty()
             }
         ).step_by(every)
@@ -50,13 +50,13 @@ pub(crate) fn parse_into_percent_res
     hist_percent: &mut HistSampler<usize, HistUsize>
 )
 {
-    let mut it = slice.split(" ");
+    let mut it = slice.split_whitespace();
     let energy = it.next().unwrap();
     
     let energy = energy.parse::<usize>().unwrap();
 
     let iter = slice
-        .split(" ")
+        .split_whitespace()
         .skip(2)
         .map(|v| v.parse::<usize>().unwrap());
     

@@ -1,6 +1,5 @@
 use crate::heatmap_generic::*;
 use sampling::*;
-use glob;
 use std::{fmt::Display, fs::*, io::{BufRead, BufReader, BufWriter, Read, Write}, process::Command, str::FromStr};
 use lzma::LzmaReader;
 use flate2::read::*;
@@ -150,7 +149,7 @@ pub fn work<X, Y, HX, HY>(
         {
             Ok(_) => {},
             Err(error) => {
-                eprintln!("{}", error.to_string())
+                eprintln!("{}", error)
             }
         }
     }
@@ -180,7 +179,7 @@ where R: Read,
             |line|
             {
                 let trimmed = line.trim_start();
-                !trimmed.starts_with("#") // skip comments
+                !trimmed.starts_with('#') // skip comments
                 && !trimmed.is_empty()
             }
         ).step_by(opts.every.get())
@@ -188,7 +187,7 @@ where R: Read,
             |line|
             {
                 let slice = line.trim_start();
-                let mut it = slice.split(" ");
+                let mut it = slice.split_whitespace();
 
                 let smaller = it.nth(smaller_index).unwrap();
                 let bigger = it.nth(dif).unwrap();

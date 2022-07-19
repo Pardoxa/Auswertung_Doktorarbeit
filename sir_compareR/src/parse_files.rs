@@ -2,7 +2,6 @@ use std::{io::*, ops::Div};
 use std::fs::*;
 use flate2::read::*;
 use std::path::Path;
-use glob;
 use crate::parse_cmd::*;
 use crate::stats::Data;
 use std::result::Result;
@@ -14,23 +13,23 @@ pub enum DataMode{
     Sparse,
 }
 
-fn norm_vec(vec: &mut Vec<f64>){
+fn norm_vec(vec: &mut [f64]){
     let mut max = vec[0];
-    for i in 1..vec.len() {
-        if max < vec[i] {
-            max = vec[i];
+    for v in vec.iter().skip(1) {
+        if max < *v {
+            max = *v;
         }
     }
     let inverse = 1.0 / max;
-    for i in 0..vec.len() {
-        vec[i] *= inverse;
+    for v in vec.iter_mut() {
+        *v *= inverse;
     }
 }
 
 pub(crate) fn parse_helper(slice: &str) -> Vec<f64>
 {
     slice
-        .split(" ")
+        .split_whitespace()
         .skip(2)
         .map(|v| v.parse::<f64>().unwrap())
         .collect()
@@ -54,14 +53,14 @@ where
         .map(|v| v.unwrap())
         .filter(|line| 
             {
-                !line.trim_start().starts_with("#") // skip comments
+                !line.trim_start().starts_with('#') // skip comments
                 && !line.is_empty()
             }
         ).step_by(every)
         .for_each( |line|
             {
                 let slice = line.trim();
-                let mut it = slice.split(" ");
+                let mut it = slice.split_whitespace();
                 let energy = it.next().unwrap();
                 let extinction_index = it.next().unwrap();
                 let energy = energy.parse::<usize>().unwrap();
@@ -69,7 +68,7 @@ where
 
                 let mut vec: Vec<f64> = if data.is_inside_len_set() {
                     slice
-                        .split(" ")
+                        .split_whitespace()
                         .skip(2)
                         .take(extinction_index + 1)
                         .map(|v| v.parse::<f64>().unwrap())
@@ -109,14 +108,14 @@ where
         .map(|v| v.unwrap())
         .filter(|line| 
             {
-                !line.trim_start().starts_with("#") // skip comments
+                !line.trim_start().starts_with('#') // skip comments
                 && !line.is_empty()
             }
         ).step_by(every)
         .for_each( |line|
             {
                 let slice = line.trim();
-                let mut it = slice.split(" ");
+                let mut it = slice.split_whitespace();
                 let energy = it.next().unwrap();
                 
                 let energy = energy.parse::<usize>().unwrap();

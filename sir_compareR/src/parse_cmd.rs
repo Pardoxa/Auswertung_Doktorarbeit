@@ -578,9 +578,8 @@ pub fn get_suffix<S: AsRef<str>>(pattern: S) -> Result<String, HashSet<String>>
                 let s = item.into_os_string()
                         .into_string()
                         .unwrap();
-                s.rsplit(".")
-                    .filter(|suf| !COMPRESSION_SUFFIX.contains(suf))
-                    .next()
+                s.rsplit('.')
+                    .find(|suf| !COMPRESSION_SUFFIX.contains(suf))
                     .unwrap()
                     .to_owned()
                     
@@ -688,7 +687,7 @@ impl FromStr for GnuPalett
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut iter = s.split(",");
+        let mut iter = s.split(',');
         let first = match iter.next(){
             Some(val) => val,
             None => return Err("No option given")
@@ -711,7 +710,7 @@ impl FromStr for GnuPalett
                 let mut params = CubeHelixParameter::default();
                 for val in iter {
                     let l = val.to_lowercase();
-                    if l.starts_with("r") || l.starts_with("reverse"){
+                    if l.starts_with('r') || l.starts_with("reverse"){
                         params.reverse(true);
                     }
                 }

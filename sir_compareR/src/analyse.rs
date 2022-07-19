@@ -5,7 +5,6 @@ use average::Mean;
 use indicatif::*;
 use std::convert::*;
 use rayon::prelude::*;
-use rayon;
 
 pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize, mode: Mode) -> Stats
 {
@@ -37,9 +36,7 @@ pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize, mode: Mode) -> Sta
             continue;
         }
         for j in data.range_iter() {
-            if i < j {
-                continue;
-            } else if data.get_len_at_index(j) < cutoff { // check that there is actually at least 2 curves available
+            if i < j || data.get_len_at_index(j) < cutoff {// check that there is actually at least 2 curves available
                 continue;
             }
             diff_helper.clear();
@@ -132,9 +129,7 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
             continue;
         }
         for j in data.range_iter() {
-            if i < j {
-                continue;
-            } else if data.get_len_at_index(j) < cutoff { // check that there is actually at least 2 curves available
+            if i < j || data.get_len_at_index(j) < cutoff {// check that there is actually at least 2 curves available
                 continue;
             }
             let work = u64::try_from(data.get_len_at_index(i)).unwrap() * u64::try_from(data.get_len_at_index(j)).unwrap();
@@ -296,7 +291,7 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
 
 pub fn write_matr(stats: Stats, opts: HeatmapOpts)
 {
-    let mut stats_writer = StatsWriter::new_from_heatmap_opts(opts.clone());
+    let mut stats_writer = StatsWriter::new_from_heatmap_opts(opts);
     stats_writer.write_stats(stats);
     stats_writer.mean_writer.finish().unwrap();
 }

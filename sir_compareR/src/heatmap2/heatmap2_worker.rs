@@ -110,7 +110,7 @@ impl FromStr for FunctionChooser {
             "sum" => Ok(FunctionChooser::Sum),
             _ => {
                 if s.contains("to") {
-                    let mut iter = s.split("_");
+                    let mut iter = s.split_whitespace();
                     let x = iter.next()
                         .ok_or("Invalid FunctionChooser requested - invalid first (x) number")?;
                     if let Some(n) = iter.next(){
@@ -154,8 +154,7 @@ where I: Iterator<Item=T> + Clone,
     T: Copy + OrdSubset + Eq,
 {
     let max = max_val(iter.clone());
-    let index = iter.position(|v| v == max).unwrap();
-    index
+    iter.position(|v| v == max).unwrap()
 }
 
 fn min_index<T, I>(mut iter: I) -> usize 
@@ -163,8 +162,7 @@ where I: Iterator<Item=T> + Clone,
     T: Copy + OrdSubset + Eq,
 {
     let max = min_val(iter.clone());
-    let index = iter.position(|v| v == max).unwrap();
-    index
+    iter.position(|v| v == max).unwrap()
 }
 
 
@@ -204,7 +202,7 @@ impl FromStr for HeatmapBuilder {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim();
         let lower = s.to_lowercase();
-        let mut iter = lower.split(" ").skip(1);
+        let mut iter = lower.split_whitespace().skip(1);
         
         let bins = iter.next().expect("Not enough arguments, bins missing");
         let bins = bins.parse::<usize>().unwrap();
@@ -213,7 +211,7 @@ impl FromStr for HeatmapBuilder {
 
         assert_eq!(iter.next(), None, "HeatmapBuilder: To many arguments");
 
-        if lower.starts_with("u")
+        if lower.starts_with('u')
         {
             let left = left.parse::<usize>().unwrap();
             let right = right.parse::<usize>().unwrap();
@@ -225,7 +223,7 @@ impl FromStr for HeatmapBuilder {
                 }
             )
         } 
-        else if lower.starts_with("f")
+        else if lower.starts_with('f')
         {
             let left = left.parse::<f64>().unwrap();
             let right = right.parse::<f64>().unwrap();

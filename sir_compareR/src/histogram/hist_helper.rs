@@ -1,5 +1,5 @@
 
-use std::str::FromStr;
+use std::{str::FromStr, cmp::Ordering};
 
 #[derive(Debug, Clone, Copy)]
 pub enum HistReduce{
@@ -97,23 +97,26 @@ impl Histogram{
     #[allow(dead_code)]
     pub fn append(&mut self, mut other: Histogram)
     {
-        if self.hist.len() == other.hist.len()
+        match self.hist.len().cmp(&other.hist.len())
         {
-            for (index, mut bin) in other.hist.into_iter().enumerate(){
-                self.hist[index].append(&mut bin);
+            Ordering::Equal => {
+                for (index, mut bin) in other.hist.into_iter().enumerate(){
+                    self.hist[index].append(&mut bin);
+                }
+            },
+            Ordering::Less => {
+                for index in 0..self.hist.len()
+                {
+                    self.hist[index].append(&mut other.hist[index]);
+                }
+                for vec in other.hist.into_iter().skip(self.hist.len())
+                {
+                    self.hist.push(vec);
+                }
+            },
+            Ordering::Greater => {
+                unreachable!("reached in append")
             }
-        } else if self.hist.len() < other.hist.len()
-        {
-            for index in 0..self.hist.len()
-            {
-                self.hist[index].append(&mut other.hist[index]);
-            }
-            for vec in other.hist.into_iter().skip(self.hist.len())
-            {
-                self.hist.push(vec);
-            }
-        } else {
-            unreachable!("reached in append")
         }
     }
 }

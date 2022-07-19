@@ -36,7 +36,7 @@ where
         .map(|v| v.unwrap())
         .filter(|line| 
             {
-                !line.trim_start().starts_with("#") // skip comments
+                !line.trim_start().starts_with('#') // skip comments
                 && !line.is_empty()
             }
         ).step_by(every)
@@ -65,20 +65,20 @@ pub(crate) fn parse_into_heatmap_f64
     normed: bool
 )
 {
-    let mut it = slice.split(" ");
+    let mut it = slice.split_whitespace();
     let energy = it.next().unwrap();
     
     let energy = energy.parse::<usize>().unwrap();
 
     let iter = slice
-        .split(" ")
+        .split_whitespace()
         .skip(2)
         .map(|v| v.parse::<f64>().unwrap());
 
     let val = if normed {
         let max = max_val(iter);
         let iter = slice
-            .split(" ")
+            .split_whitespace()
             .skip(2)
             .map(|v| v.parse::<f64>().unwrap() / max);
         fun.f64_exec(iter, energy)
@@ -98,20 +98,20 @@ pub(crate) fn parse_into_heatmap_usize
     normed: bool
 )
 {
-    let mut it = slice.split(" ");
+    let mut it = slice.split_whitespace();
     let energy = it.next().unwrap();
     
     let energy = energy.parse::<usize>().unwrap();
 
     let iter = slice
-        .split(" ")
+        .split_whitespace()
         .skip(2)
         .map(|v| v.parse::<usize>().unwrap());
 
     let val = if normed {
         let max = max_val(iter);
         let iter = slice
-            .split(" ")
+            .split_whitespace()
             .skip(2)
             .map(|v| v.parse::<usize>().unwrap() / max);
         fun.usize_exec(iter)

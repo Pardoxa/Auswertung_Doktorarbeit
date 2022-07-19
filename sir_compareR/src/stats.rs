@@ -77,29 +77,29 @@ pub struct StatsWriter<W, W2>
 
 impl<W: Write, W2: Write> StatsWriter<W, W2>{
 
-    fn write_mean(&mut self, mean: &Vec<Vec<f64>>)
+    fn write_mean(&mut self, mean: &[Vec<f64>])
     {
         for v in mean.iter(){
-            let len = v.len();
-            for i in 0..len - 1{
-                write!(self.mean_writer, "{:e} ", v[i]).unwrap();
+            let slice = &v[..v.len()-1];
+            for v in slice.iter(){
+                write!(self.mean_writer, "{:e} ", v).unwrap();
             }
             writeln!(self.mean_writer, "{:e}", v.last().unwrap()).unwrap();
         }
     }
 
-    fn write_iteration_count(&mut self, iteration_count: &Vec<Vec<usize>>)
+    fn write_iteration_count(&mut self, iteration_count: &[Vec<usize>])
     {
         for v in iteration_count.iter(){
-            let len = v.len();
-            for i in 0..len - 1{
-                write!(self.iteration_count_writer, "{} ", v[i]).unwrap();
+            let slice = &v[..v.len()-1];
+            for v in slice.iter(){
+                write!(self.iteration_count_writer, "{} ", v).unwrap();
             }
             writeln!(self.iteration_count_writer, "{}", v.last().unwrap()).unwrap();
         }
     }
 
-    fn write_curve_count(&mut self, curve_count: &Vec<usize>)
+    fn write_curve_count(&mut self, curve_count: &[usize])
     {
         for i in curve_count.iter(){
             writeln!(self.curve_count_writer, "{}", i).unwrap();
@@ -148,9 +148,10 @@ impl StatsWriter<File, File>{
 
 impl<W: Write, W2: Write> Write for StatsWriter<W, W2>{
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
-        self.mean_writer.write(buf)?;
-        self.iteration_count_writer.write(buf)?;
-        self.curve_count_writer.write(buf)
+        self.mean_writer.write_all(buf)?;
+        self.iteration_count_writer.write_all(buf)?;
+        self.curve_count_writer.write_all(buf)?;
+        Ok(buf.len())
     }
 
     fn flush(&mut self) -> Result<()> {
@@ -397,14 +398,16 @@ where F: Fn(f64, f64) -> f64
             if ex_2 < ex_1 {
                 // now ex_2 is smaller than ex_1
                 let a = arr2[ex_2 - 1];
-                for i in ex_2..ex_1 {
-                    sum += reduction(a, arr1[i]);
+                let slice = &arr1[ex_2..ex_1];
+                for &a1 in slice {
+                    sum += reduction(a, a1);
                 }
             }else {
                 // now ex_1 is smaller than ex_2
                 let a = arr1[ex_1 - 1];
-                for i in ex_1..ex_2 {
-                    sum += reduction(a, arr2[i]);
+                let slice = &arr2[ex_1..ex_2];
+                for &a2 in slice {
+                    sum += reduction(a, a2);
                 }
             }
             

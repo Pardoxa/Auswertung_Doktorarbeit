@@ -137,7 +137,7 @@ impl FromStr for HistBuilder {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim();
         let lower = s.to_lowercase();
-        let mut iter = lower.split(" ").skip(1);
+        let mut iter = lower.split_whitespace().skip(1);
         
         let bins = iter.next().expect("Not enough arguments, bins missing");
         let bins = bins.parse::<usize>().unwrap();
@@ -146,7 +146,7 @@ impl FromStr for HistBuilder {
 
         assert_eq!(iter.next(), None, "HeatmapBuilder: To many arguments");
 
-        if lower.starts_with("i")
+        if lower.starts_with('i')
         {
             let left = left.parse::<isize>().unwrap();
             let right = right.parse::<isize>().unwrap();
@@ -158,7 +158,7 @@ impl FromStr for HistBuilder {
                 }
             )
         } 
-        else if lower.starts_with("f")
+        else if lower.starts_with('f')
         {
             let left = left.parse::<f64>().unwrap();
             let right = right.parse::<f64>().unwrap();

@@ -37,7 +37,8 @@ pub fn parse_file<R: Read>(file: R) -> Vec<CurveEntry>
             let slice = s.trim_start();
             let mut it = slice.split(" ");
             let left = 1 + it.next().unwrap().parse::<usize>().unwrap();
-            let right = 1 +  it.next().unwrap().parse::<usize>().unwrap();
+            //let right = 1 +  it.next().unwrap().parse::<usize>().unwrap();
+            let right = left + 1;
             let prob = it.next().unwrap().parse::<f64>().unwrap();
             CurveEntry{
                 left,
