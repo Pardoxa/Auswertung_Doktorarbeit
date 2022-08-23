@@ -191,6 +191,6 @@ where P: AsRef<Path>,
                 DataMode::Naive => parse_and_group_naive(file, every, data, index_func, norm),
             };
         }
-    }
-
+    };
+    
 }

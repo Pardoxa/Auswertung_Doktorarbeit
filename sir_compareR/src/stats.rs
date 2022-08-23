@@ -203,9 +203,39 @@ impl Data{
         self.inside_len_set
     }
 
-    pub fn get_inside_len(&self) -> usize
+    pub fn make_same_len(&mut self)
     {
-        self.inside_len
+        let max_len = self.data.iter().flat_map(
+            |vec|
+            {
+                vec.iter().map(
+                    |vec|
+                    vec.len()
+                )
+            }
+        ).max().unwrap();
+
+        self.data.iter_mut()
+            .for_each(
+                |bin|
+                {
+                    bin.iter_mut()
+                        .for_each(
+                            |curve|
+                            {
+                                let dif = max_len - curve.len();
+                                if dif > 0 
+                                {
+                                    let last = *curve.last().unwrap();
+                                    curve.extend(
+                                        std::iter::repeat(last).take(dif)
+                                    );
+                                }
+                            }
+                        )    
+                }
+            )
+
     }
 
     #[inline(always)]
@@ -242,7 +272,7 @@ impl Data{
     pub fn calc_mean<F>(&self, i: usize, j: usize, k: usize, l: usize, reduction: F) -> f64
     where F: Fn(f64, f64) -> f64
     {
-        reduce(&self.data[i][k], &self.data[j][l], self.get_inside_len(), reduction)
+        reduce(&self.data[i][k], &self.data[j][l], reduction)
     }
 
 
@@ -386,11 +416,12 @@ impl IndexData {
 /// calculates mean of (itemwise) reduction of two curves 
 /// cuve1: data[i][k]
 /// curve2: data[j][l] 
-pub fn reduce<F>(arr1: &[f64], arr2: &[f64], len: usize, reduction: F) -> f64
+pub fn reduce<F>(arr1: &[f64], arr2: &[f64], reduction: F) -> f64
 where F: Fn(f64, f64) -> f64
 {
     let ex_1 = arr1.len();
     let ex_2 = arr2.len();
+    let len = ex_1.max(ex_2);
     let counter = ex_1.min(ex_2);
     
     // calculate weighted mean where both have values

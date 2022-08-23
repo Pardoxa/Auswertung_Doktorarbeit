@@ -1,6 +1,6 @@
 [package]
 name = "sir_compare_r"
-version = "0.9.0"
+version = "0.10.0-beta"
 authors = ["Yannick Feld <yannick.feld@uol.de>"]
 edition = "2018"
 

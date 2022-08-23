@@ -6,11 +6,11 @@ use indicatif::*;
 use std::convert::*;
 use rayon::prelude::*;
 
-pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize, mode: Mode) -> Stats
+pub fn compare_curves(mut data: Data, p_bar: bool, cutoff: usize, mode: Mode) -> Stats
 {
     let mut diff_helper = Vec::new();
     let mut stats = Stats::new(data.data());
-
+    println!("called");
     let mut workload = 0u64;
     for i in data.range_iter(){
         for j in data.range_iter(){
@@ -29,7 +29,13 @@ pub fn compare_curves(data: Data, p_bar: bool, cutoff: usize, mode: Mode) -> Sta
         None
     };
      
-    
+    match mode {
+        Mode::Corr => {
+            println!("make same len");
+            data.make_same_len();
+        },
+        _ => ()
+    };
     
     for i in data.range_iter(){
         if data.get_len_at_index(i) < cutoff {
@@ -116,7 +122,7 @@ fn mode_cbrt(a: f64, b: f64) -> f64 {
     mode_abs(a,b).cbrt()
 }
 
-pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutoff: usize, mode: Mode) -> Stats
+pub fn compare_curves_parallel(mut data: Data, num_threds: usize, p_bar: bool, cutoff: usize, mode: Mode) -> Stats
 {
     let mut stats = Stats::new(data.data());
     
@@ -150,6 +156,13 @@ pub fn compare_curves_parallel(data: Data, num_threds: usize, p_bar: bool, cutof
   
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threds).build().unwrap();
 
+    match mode {
+        Mode::Corr => {
+            println!("make same len");
+            data.make_same_len();
+        },
+        _ => ()
+    };
 
 
     let mut results = Vec::new();
