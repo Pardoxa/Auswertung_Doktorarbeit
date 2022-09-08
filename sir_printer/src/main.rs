@@ -172,26 +172,44 @@ fn print_curves(curves: Vec<Vec<usize>>, opt: Opt)
             }
         },
         None => {
-            if let Some(c) = curves.get(0) {
-                let size = c.len();
+            if !curves.is_empty() {
+                let size = curves.iter().map(|curve| curve.len()).max().unwrap();
                 if opt.normed {
                     let normed_curves: Vec<_> = curves
                         .into_iter()
                         .map(|v| norm(&v))
                         .collect();
                     for j in 0..size {
+                        let mut average =0.0;
                         for i in 0..normed_curves.len(){
-                            dtoa::write(&mut out, normed_curves[i][j]).unwrap();
+                            let value = *match normed_curves[i].get(j)
+                            {
+                                Some(v) => v,
+                                None => normed_curves[i].last().unwrap()
+                            };
+                            average += value;
+                            dtoa::write(&mut out, value).unwrap();
                             write!(&mut out, " ").unwrap();
                         }
+                        average /= normed_curves.len() as f64;
+                        dtoa::write(&mut out, average).unwrap();
                         writeln!(&mut out).unwrap();
                     }
                 } else {
                     for j in 0..size {
+                        let mut average = 0;
                         for i in 0..curves.len(){
-                            itoa::write(&mut out, curves[i][j]).unwrap();
+                            let value = *match curves[i].get(j)
+                            {
+                                Some(v) => v,
+                                None => curves[i].last().unwrap()
+                            };
+                            itoa::write(&mut out, value).unwrap();
                             write!(&mut out, " ").unwrap();
+                            average += value;
                         }
+                        let average = average as f64 / curves.len() as f64;
+                        dtoa::write(&mut out, average).unwrap();
                         writeln!(&mut out).unwrap();
                     }
                 }
