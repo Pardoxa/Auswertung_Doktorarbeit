@@ -2,6 +2,7 @@
 
 use structopt::StructOpt;
 mod rate_to_pdf;
+mod pdf_to_rate;
 use std::env;
 
 fn main() {
@@ -12,8 +13,11 @@ fn main() {
     }
     println!();
     match &options {
-        _ => {
+        Opt::RateToPdf{..} => {
             rate_to_pdf::rate_to_pdf(options.into())
+        },
+        Opt::PdfToRateOpt(o) => {
+            pdf_to_rate::pdf_to_rate(o)
         }
     }
 }
@@ -36,7 +40,21 @@ pub enum Opt
         /// logarithmic result
         #[structopt(long)]
         no_exp: bool,
-    }
+    },
+    /// should be log10, output is ln as rate function requires
+    PdfToRateOpt(PdfToRateOpt)
+}
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct PdfToRateOpt
+{
+    /// which rate function to load
+    #[structopt(long, short)]
+    pub load: String,
+    
+    /// use this system size
+    #[structopt(long, short)]
+    pub n: usize,
 }
 
 pub struct RateToPdfOpt
@@ -61,6 +79,7 @@ impl From<Opt> for RateToPdfOpt{
                     no_exp,
                 }
             },
+            _ => unimplemented!()
         }
     }
 }
