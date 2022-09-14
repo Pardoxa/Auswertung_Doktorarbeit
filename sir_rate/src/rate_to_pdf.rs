@@ -32,7 +32,7 @@ impl RateEntry
 
 pub fn parse_entry(slice: &str) -> Option<RateEntry>
 {
-    let mut it = slice.split(" ");
+    let mut it = slice.split_whitespace();
     let left = it.next()?.parse::<f64>().ok()?;
     
     let right = it.next()?.parse::<f64>().ok()?;
@@ -59,7 +59,7 @@ pub fn parse_file<F: AsRef<Path>>(file: F) -> Vec<RateEntry>
             |line|
             {
                 let t = line.trim_start();
-                !t.starts_with("#") // skip comments
+                !t.starts_with('#') // skip comments
                 && !t.is_empty()
             }
         ).map(

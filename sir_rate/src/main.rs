@@ -40,6 +40,7 @@ pub enum Opt
         /// logarithmic result
         #[structopt(long)]
         no_exp: bool,
+        
     },
     /// should be log10, output is ln as rate function requires
     PdfToRateOpt(PdfToRateOpt)
@@ -55,6 +56,15 @@ pub struct PdfToRateOpt
     /// use this system size
     #[structopt(long, short)]
     pub n: usize,
+
+    #[structopt(long)]
+    pub index_left: usize,
+
+    #[structopt(long)]
+    pub index_right: usize,
+
+    #[structopt(long)]
+    pub index_log: usize
 }
 
 pub struct RateToPdfOpt

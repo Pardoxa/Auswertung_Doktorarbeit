@@ -8,7 +8,7 @@ use crate::PdfToRateOpt;
 
 pub fn pdf_to_rate(opt: &PdfToRateOpt)
 {
-    let mut rate = parse_file(&opt.load);
+    let mut rate = parse_file(&opt.load, opt.index_left, opt.index_right, opt.index_log);
     calc_rate(opt, &mut rate);
     print_rate(&rate)
 }
@@ -21,23 +21,16 @@ pub struct RateEntry
     pub val: f64
 }
 
-impl RateEntry
+
+
+pub fn parse_entry(slice: &str, index_left: usize, index_right: usize, index_log: usize) -> Option<RateEntry>
 {
-    pub fn val(&mut self) -> &mut f64
-    {
-        &mut self.val
-    }
-}
-
-
-pub fn parse_entry(slice: &str) -> Option<RateEntry>
-{
-    let mut it = slice.split(" ");
-    let left = it.next()?.parse::<f64>().ok()?;
-    
-    let right = it.next()?.parse::<f64>().ok()?;
-
-    let val = it.next()?.parse::<f64>().ok()?;
+    let mut it = slice.split_whitespace();
+    let left = it.nth(index_left)?.parse::<f64>().ok()?;
+    let mut it = slice.split_whitespace();
+    let right = it.nth(index_right)?.parse::<f64>().ok()?;
+    let mut it = slice.split_whitespace();
+    let val = it.nth(index_log)?.parse::<f64>().ok()?;
 
     Some(
         RateEntry{
@@ -48,7 +41,7 @@ pub fn parse_entry(slice: &str) -> Option<RateEntry>
     )
 }
 
-pub fn parse_file<F: AsRef<Path>>(file: F) -> Vec<RateEntry>
+pub fn parse_file<F: AsRef<Path>>(file: F, index_left: usize, index_right: usize, index_log: usize) -> Vec<RateEntry>
 {
     let f = File::open(file).expect("unable to open file");
     let reader = BufReader::new(f);
@@ -59,14 +52,14 @@ pub fn parse_file<F: AsRef<Path>>(file: F) -> Vec<RateEntry>
             |line|
             {
                 let t = line.trim_start();
-                !t.starts_with("#") // skip comments
+                !t.starts_with('#') // skip comments
                 && !t.is_empty()
             }
         ).map(
             |l|
             {
                 let t = l.trim_start();
-                parse_entry(t).unwrap()
+                parse_entry(t, index_left, index_right, index_log).unwrap()
             }
         ).collect()
 }
