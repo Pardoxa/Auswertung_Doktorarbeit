@@ -24,6 +24,7 @@ num-traits = "0.2.12"
 ord_subset = "3"
 either = "1.6.1"
 lazy_static = "1.4.0"
+colored = "2.0.0"
 
 [profile.release]
 opt-level = 3

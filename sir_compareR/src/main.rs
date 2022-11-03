@@ -13,7 +13,7 @@ use either::*;
 mod heatmap2;
 mod hist_analyser;
 use std::process::Command;
-
+use colored::*;
 mod heatmap_generic;
 use heatmap_generic::*;
 
@@ -26,6 +26,11 @@ fn main() {
         Opt::Percent{..} => write_percent(options.into()),
         Opt::GenericHeatmap{..} => generate_heatmap(options.try_into().unwrap())
     };
+
+    if heatmap2::WARNING_PRINTED.load(std::sync::atomic::Ordering::Relaxed)
+    {
+        eprintln!("{}", "Are you sure you wanted to norm the curves? This is probably a mistake!".red().bold())
+    }
 }
 
 

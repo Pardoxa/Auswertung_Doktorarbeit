@@ -10,10 +10,13 @@ use indicatif::*;
 use rayon::prelude::*;
 use crate::heatmap2::*;
 use either::*;
+use std::sync::atomic::*;
 
 pub type HeatmapUF = HeatmapU<HistUsize, HistF64>;
 pub type HeatmapUU = HeatmapU<HistUsize, HistUsize>;
 pub type EitherH = Either<HeatmapUF, HeatmapUU>;
+
+pub static WARNING_PRINTED: AtomicBool = AtomicBool::new(false);
 
 fn parse_and_count<R>
 (
@@ -109,11 +112,14 @@ pub(crate) fn parse_into_heatmap_usize
         .map(|v| v.parse::<usize>().unwrap());
 
     let val = if normed {
-        let max = max_val(iter);
+        if !WARNING_PRINTED.swap(true, Ordering::SeqCst){
+            eprintln!("Are you sure that you want to norm the curves? This is probably a mistake!");
+        }
+        let max = max_val(iter) as f64;
         let iter = slice
             .split_whitespace()
             .skip(2)
-            .map(|v| v.parse::<usize>().unwrap() / max);
+            .map(|v| v.parse::<f64>().unwrap() / max);
         fun.usize_exec(iter)
     } else {
         fun.usize_exec(iter)

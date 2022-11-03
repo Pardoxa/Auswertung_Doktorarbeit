@@ -1,3 +1,4 @@
+use num_traits::{Zero, AsPrimitive};
 use ord_subset::{OrdSubset, OrdSubsetIterExt};
 use std::str::FromStr;
 use crate::heatmap2::*;
@@ -5,6 +6,7 @@ use sampling::*;
 use either::*;
 use std::fmt;
 use fmt::Display;
+use std::any::{TypeId, Any};
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionChooser{
@@ -31,6 +33,21 @@ impl Display for FunctionChooser {
     }
 }
 
+// this will be optimized out: https://godbolt.org/z/jdvdxjYhn
+#[inline]
+pub fn cast_or_panic<T, U>(val: U) -> T
+where U: Any, 
+T: Any
+{
+    if TypeId::of::<T>() == TypeId::of::<U>()
+    {
+        let b: Box<dyn Any> = Box::new(val);
+        *b.downcast().unwrap()
+    } else {
+        panic!("Issue with casting - you probably did not mean to normalize the trajectories")
+    }
+}
+
 impl FunctionChooser{
     pub fn f64_exec<I>(&self, iter: I, energy: usize) -> f64
     where I: Iterator<Item=f64>
@@ -42,21 +59,27 @@ impl FunctionChooser{
         }
     }
 
-    pub fn usize_exec<I>(&self, iter: I) -> usize
-    where I: Iterator<Item=usize> + Clone
+    pub fn usize_exec<I, T>(&self, iter: I) -> usize
+    where I: Iterator<Item=T> + Clone,
+     T: Copy + OrdSubset + PartialEq + std::fmt::Debug + Any + 'static + Send + Sync + Zero + AsPrimitive<f64>,
     {
         match self {
-            FunctionChooser::ValMax => max_val(iter),
-            FunctionChooser::IndexMax => max_index(iter),
-            FunctionChooser::IndexMin => min_index(iter),
-            FunctionChooser::ValMin => min_val(iter),
+            FunctionChooser::ValMax => {
+                cast_or_panic(max_val::<T, _>(iter))
+            },
+            FunctionChooser::IndexMax => max_index::<T, _>(iter),
+            FunctionChooser::IndexMin => min_index::<T, _>(iter),
+            FunctionChooser::ValMin => {
+                cast_or_panic(min_val::<T, _>(iter))
+            },
             FunctionChooser::Sum => {
+                let iter = iter.map(|val| cast_or_panic::<usize, _>(val));
                 iter.sum()
             },
             FunctionChooser::LastIndexNotZero => {
                 let mut index = 0;
                 for (id, val) in iter.enumerate() {
-                    if val != 0 {
+                    if val != T::zero() {
                         index = id; 
                     }
                 }
@@ -64,14 +87,15 @@ impl FunctionChooser{
             },
             FunctionChooser::FromXToY(x, y) => {
                 let max_val = max_val(iter.clone());
-                let p_y = max_val as f64 * y;
-                let p_x = max_val as f64 * x;
+                let p_y = max_val.as_() * y;
+                let p_x = max_val.as_() * x;
                 let mut index_p_x = None;
                 let mut val_p_x = 0.0;
                 let mut index_p_y = None;
                 for (index, val) in iter.clone().enumerate()
                 {
-                    if val as f64 >= p_x {
+                    let val = val.as_();
+                    if val >= p_x {
                         index_p_x = Some(index);
                         val_p_x = val as f64;
                         break;
@@ -79,7 +103,7 @@ impl FunctionChooser{
                 }
                 for (index, val) in iter.enumerate()
                 {
-                    if val as f64 >= p_y {
+                    if val.as_() >= p_y {
                         index_p_y = Some(index);
                         break;
                     }
@@ -133,12 +157,17 @@ impl FromStr for FunctionChooser {
 
 
 
-pub fn max_val<T, I>(iter: I) -> T
+pub fn max_val<T, I>(mut iter: I) -> T
 where I: Iterator<Item=T>,
-    T: Copy + OrdSubset,
+    T: Copy  + PartialOrd,
 {
-    iter.ord_subset_max()
-        .unwrap()
+    let mut m = iter.next().unwrap();
+    for val in iter {
+        if val > m {
+            m = val;
+        }
+    }
+    m
 }
 
 pub fn min_val<T, I>(iter: I) -> T
@@ -151,18 +180,34 @@ where I: Iterator<Item=T>,
 
 fn max_index<T, I>(mut iter: I) -> usize 
 where I: Iterator<Item=T> + Clone,
-    T: Copy + OrdSubset + Eq,
+    T: Copy + PartialOrd,
 {
-    let max = max_val(iter.clone());
-    iter.position(|v| v == max).unwrap()
+    let mut cur_max = iter.next().unwrap();
+    let mut pos = 0;
+    for (index, val) in iter.enumerate()
+    {
+        if cur_max < val {
+            cur_max = val;
+            pos = index + 1;
+        }
+    }
+    pos
 }
 
 fn min_index<T, I>(mut iter: I) -> usize 
 where I: Iterator<Item=T> + Clone,
-    T: Copy + OrdSubset + Eq,
+    T: Copy + PartialOrd,
 {
-    let max = min_val(iter.clone());
-    iter.position(|v| v == max).unwrap()
+    let mut cur_min = iter.next().unwrap();
+    let mut pos = 0;
+    for (index, val) in iter.enumerate()
+    {
+        if cur_min > val {
+            cur_min = val;
+            pos = index + 1;
+        }
+    }
+    pos
 }
 
 

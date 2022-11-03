@@ -28,14 +28,11 @@ pub fn compare_curves(mut data: Data, p_bar: bool, cutoff: usize, mode: Mode) ->
     }else{
         None
     };
-     
-    match mode {
-        Mode::Corr => {
-            println!("make same len");
-            data.make_same_len();
-        },
-        _ => ()
-    };
+
+    if let Mode::Corr = mode{
+        println!("make same len");
+        data.make_same_len();
+    }
     
     for i in data.range_iter(){
         if data.get_len_at_index(i) < cutoff {
@@ -65,7 +62,7 @@ pub fn compare_curves(mut data: Data, p_bar: bool, cutoff: usize, mode: Mode) ->
             let iteration_count = diff_helper.len();
             let res: Mean = diff_helper.iter().collect();
             stats.push_unchecked(i, j, res.mean(), iteration_count);
-            for b in bar.iter(){
+            if let Some(b) = bar.as_ref() {
                 b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
             }
             
@@ -156,13 +153,11 @@ pub fn compare_curves_parallel(mut data: Data, num_threds: usize, p_bar: bool, c
   
     let pool = rayon::ThreadPoolBuilder::new().num_threads(num_threds).build().unwrap();
 
-    match mode {
-        Mode::Corr => {
-            println!("make same len");
-            data.make_same_len();
-        },
-        _ => ()
-    };
+    if let Mode::Corr = mode{
+        println!("make same len");
+        data.make_same_len();
+    }
+    
 
 
     let mut results = Vec::new();
@@ -215,7 +210,7 @@ pub fn compare_curves_parallel(mut data: Data, num_threds: usize, p_bar: bool, c
                         };
                 
                    
-                        for b in bar.iter(){
+                        if let Some(b) = bar.as_ref(){
                             b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
                         }
                         let mean = match mode {
@@ -277,7 +272,7 @@ pub fn compare_curves_parallel(mut data: Data, num_threds: usize, p_bar: bool, c
                         };
                         
                            
-                        for b in bar.iter(){
+                        if let Some(b) = bar.as_ref() {
                             b.inc(u64::try_from(data.get_len_at_index(i) * data.get_len_at_index(j)).unwrap());
                         }
                         
