@@ -14,6 +14,11 @@ pub enum DataMode{
 }
 
 fn norm_vec(vec: &mut [f64]){
+    if vec.is_empty()
+    {
+        eprintln!("WARNING: attempting to norm empty vector!");
+        return;
+    }
     let mut max = vec[0];
     for v in vec.iter().skip(1) {
         if max < *v {
