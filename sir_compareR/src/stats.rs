@@ -421,6 +421,9 @@ where F: Fn(f64, f64) -> f64
 {
     let ex_1 = arr1.len();
     let ex_2 = arr2.len();
+    if ex_1 == 0 || ex_2 == 0 {
+        return f64::NAN;
+    }
     let len = ex_1.max(ex_2);
     let counter = ex_1.min(ex_2);
     

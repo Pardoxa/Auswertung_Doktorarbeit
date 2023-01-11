@@ -16,6 +16,7 @@ use std::process::Command;
 use colored::*;
 mod heatmap_generic;
 use heatmap_generic::*;
+use std::sync::atomic::*;
 
 fn main() {
     let options = get_cmd_opts();
@@ -38,6 +39,10 @@ fn write_heatmap(opts: HeatmapOpts)
 {
 
     let mut sorted_data = parse_files::parse_and_group_all_files(opts.clone());
+    if crate::parse_files::UNFINISHED_ENCOUNTERED.load(Ordering::Relaxed)
+    {
+        println!("UNFINISHED COUNT: {}", crate::parse_files::UNFINISHED_COUNTER.load(Ordering::Relaxed));
+    }
     println!("average bin entries: {}", sorted_data.average_entries());
     let num = if sorted_data.data().len() < 5 {
         sorted_data.data().len()

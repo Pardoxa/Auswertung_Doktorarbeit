@@ -6,6 +6,10 @@ use crate::parse_cmd::*;
 use crate::stats::Data;
 use std::result::Result;
 use lzma::LzmaReader;
+use std::sync::atomic::*;
+
+pub static UNFINISHED_ENCOUNTERED: AtomicBool = AtomicBool::new(false);
+pub static UNFINISHED_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Copy, Clone)]
 pub enum DataMode{
@@ -71,7 +75,16 @@ where
                 let energy = energy.parse::<usize>().unwrap();
                 let extinction_index = extinction_index.parse::<usize>().unwrap();
 
-                let mut vec: Vec<f64> = if data.is_inside_len_set() {
+                let mut vec: Vec<f64> = if extinction_index == usize::MAX 
+                {
+                    UNFINISHED_COUNTER.fetch_add(1, Ordering::Relaxed);
+                    if !UNFINISHED_ENCOUNTERED.swap(true, Ordering::Relaxed)
+                    {
+                        println!("Encountered unfinished trajectory!!!!!!!!!!!!!!!!!!!!!!!")
+                    }
+                    parse_helper(slice)
+                }
+                else if data.is_inside_len_set() {
                     slice
                         .split_whitespace()
                         .skip(2)
@@ -87,6 +100,13 @@ where
                 
                 if norm {
                     norm_vec(&mut vec);
+                }
+
+                if vec.is_empty()
+                {
+
+                    println!("extinction_index {extinction_index}");
+                    println!("empty vec {line}");
                 }
                 
                 // append to correct bin
