@@ -190,7 +190,7 @@ pub struct Data
 
 impl Data{
     pub fn new_from_heatmap_options(opts: &HeatmapOpts) -> Self {
-        let data = vec![Vec::new(); opts.bins];
+        let data = vec![Vec::new(); opts.bin_count];
         Self{
             data,
             inside_len: 0,

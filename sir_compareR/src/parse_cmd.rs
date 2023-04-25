@@ -81,7 +81,11 @@ pub enum Opt
 
         /// Do not subtract 1 from the energy value
         #[structopt(long)]
-        no_subtract: bool
+        no_subtract: bool,
+
+        /// Use this option when C=0 is allowed
+        #[structopt(long)]
+        c0: bool
     },
     Histogram {
         /// number of nodes
@@ -169,6 +173,10 @@ pub enum Opt
         /// Use rgb color palett
         #[structopt(long)]
         rgb: bool,
+
+        /// Use this option when C=0 is allowed
+        #[structopt(long)]
+        c0: bool
         
     },
     GenericHeatmap
@@ -369,7 +377,8 @@ pub struct Heatmap2Opts
     pub normed: bool,
     pub heatmap_builder: HeatmapBuilder,
     pub gnuplot_exec: bool,
-    pub rgb: bool
+    pub rgb: bool,
+    pub c0: bool
 }
 
 impl Heatmap2Opts{
@@ -406,9 +415,15 @@ impl From<Opt> for Heatmap2Opts{
                 bins,
                 gnuplot,
                 rgb,
+                c0
             } => {
-                if n % bins != 0 {
-                    eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
+                let len = if c0 {
+                    n + 1
+                } else {
+                    n
+                };
+                if len % bins != 0 {
+                    eprintln!("ERROR: {} does nt divide by {} - rest is {}", len, bins, len % bins);
                     exit(-1);
                 }
                 let suffix = match get_suffix(&files){
@@ -434,6 +449,7 @@ impl From<Opt> for Heatmap2Opts{
                     normed,
                     gnuplot_exec: gnuplot,
                     rgb,
+                    c0
                 }
             },
             _ => unreachable!()
@@ -521,7 +537,7 @@ impl From<Opt> for HistogramOpts{
 pub struct HeatmapOpts{
     pub n: usize,
     pub n_real: Option<usize>,
-    pub bins: usize,
+    pub bin_count: usize,
     pub files: String,
     pub bin_size: usize,
     pub save: String,
@@ -535,7 +551,8 @@ pub struct HeatmapOpts{
     pub norm: bool,
     pub no_subtract: bool,
     pub max_entries: Option<NonZeroUsize>,
-    pub print_bin_lens: bool
+    pub print_bin_lens: bool,
+    pub c0: bool
 }
 
 impl HeatmapOpts{
@@ -558,7 +575,7 @@ impl HeatmapOpts{
             norm,
             n_actual,
             self.n,
-            self.bins,
+            self.bin_count,
             self.every,
             self.save,
             &self.suffix,
@@ -615,9 +632,15 @@ impl From<Opt> for HeatmapOpts{
                 no_subtract,
                 max_entries,
                 print_bin_lens,
+                c0
             } => {
-                if n % bins != 0 {
-                    eprintln!("ERROR: {} does nt divide by {} - rest is {}", n, bins, n % bins);
+                let len = if c0 {
+                    n + 1
+                } else {
+                    n
+                };
+                if len % bins != 0 {
+                    eprintln!("ERROR: {} does nt divide by {} - rest is {}", len, bins, len % bins);
                     exit(-1);
                 }
                 let suffix = match get_suffix(&files){
@@ -635,7 +658,7 @@ impl From<Opt> for HeatmapOpts{
                 };
                 Self{
                     n,
-                    bins,
+                    bin_count: bins,
                     files,
                     bin_size: n / bins,
                     save,
@@ -651,6 +674,7 @@ impl From<Opt> for HeatmapOpts{
                     no_subtract,
                     max_entries,
                     print_bin_lens,
+                    c0
                 }
             },
             _ => unreachable!()

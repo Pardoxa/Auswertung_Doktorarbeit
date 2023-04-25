@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::{io::*, ops::Div};
 use std::fs::*;
 use flate2::read::*;
@@ -56,6 +57,7 @@ where
         F: Fn(usize) -> usize,
         R: Read,
 {
+    dbg!("HERE");
     let buf_reader = BufReader::new(reader);
     
     buf_reader.lines()
@@ -113,6 +115,7 @@ where
                 data.push(index_func(energy), vec);
             }
         );
+        dbg!("DONE");
 }
 
 fn parse_and_group_naive<R, F>
@@ -128,7 +131,7 @@ where
     R: Read,
 {
     let buf_reader = BufReader::new(reader);
-
+    dbg!("here");
     buf_reader.lines()
         .map(|v| v.unwrap())
         .filter(|line| 
@@ -155,6 +158,7 @@ where
                 data.push(index_func(energy), vec);
             }
         );
+    dbg!("read");
 }
 
 pub fn parse_and_group_all_files(opts: HeatmapOpts) -> Data
@@ -185,9 +189,10 @@ pub fn parse_and_group_file<P, F>
     data_mode: DataMode,
     norm: bool
 )
-where P: AsRef<Path>,
+where P: AsRef<Path> + Debug,
     F: Fn(usize) -> usize,
 {
+    dbg!(format!("parsing {filename:?}"));
     let ending = filename.as_ref()
         .extension()
         .unwrap()
@@ -217,5 +222,5 @@ where P: AsRef<Path>,
             };
         }
     };
-    
+    dbg!("finished parsing file");
 }
