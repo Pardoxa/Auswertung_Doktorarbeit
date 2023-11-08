@@ -3,8 +3,8 @@ use std::{io::{BufRead, BufReader, Read, Write}, num::NonZeroUsize};
 use std::fs::File;
 use std::env;
 use flate2::read::*;
-use lzma::LzmaReader;
-use glob;
+//use lzma::LzmaReader;
+
 
 fn main() {
     let opt = Opt::from_args();
@@ -43,8 +43,9 @@ fn main() {
                 parse_curve(reader, opt, &mut curves);
             },
             "xz" => {
-                let reader = LzmaReader::new_decompressor(file).unwrap();
-                parse_curve(reader, opt, &mut curves);
+                unimplemented!()
+                //let reader = LzmaReader::new_decompressor(file).unwrap();
+                //parse_curve(reader, opt, &mut curves);
             },
             _ => {
                 parse_curve(file, opt, &mut curves);
@@ -88,7 +89,7 @@ pub struct Opt{
 pub(crate) fn parse_helper(slice: &str) -> Vec<usize>
 {
     slice
-        .split(" ")
+        .split(' ')
         .skip(2)
         .map(|v| v.parse::<usize>().unwrap())
         .collect()
@@ -103,13 +104,13 @@ fn parse_curve<R: Read>(reader: R, opt: Opt, curves: &mut Vec<Vec<usize>>){
             .map(|v| v.unwrap())
             .filter(|line| {
                     let t = line.trim_start();
-                    !t.starts_with("#") // skip comments
+                    !t.starts_with('#') // skip comments
                     && !t.is_empty()
                 }
             ).step_by(opt.every.get())
             .filter_map(|line|{
                 let slice = line.trim();
-                let mut it = slice.split(" ");
+                let mut it = slice.split(' ');
                 let energy = it.next().unwrap();
 
                 let energy = energy.parse::<usize>().unwrap();
@@ -128,7 +129,7 @@ fn parse_curve<R: Read>(reader: R, opt: Opt, curves: &mut Vec<Vec<usize>>){
             .map(|v| v.unwrap())
             .filter(|line| {
                     let t = line.trim_start();
-                    !t.starts_with("#") // skip comments
+                    !t.starts_with('#') // skip comments
                     && !t.is_empty()
                 }
             ).step_by(opt.every.get())
@@ -181,6 +182,7 @@ fn print_curves(curves: Vec<Vec<usize>>, opt: Opt)
                         .collect();
                     for j in 0..size {
                         let mut average =0.0;
+                        #[allow(clippy::needless_range_loop)]
                         for i in 0..normed_curves.len(){
                             let value = *match normed_curves[i].get(j)
                             {
@@ -198,6 +200,7 @@ fn print_curves(curves: Vec<Vec<usize>>, opt: Opt)
                 } else {
                     for j in 0..size {
                         let mut average = 0;
+                        #[allow(clippy::needless_range_loop)]
                         for i in 0..curves.len(){
                             let value = *match curves[i].get(j)
                             {
@@ -225,7 +228,7 @@ fn norm(curve: &[usize]) -> Vec<f64>
     let max = *curve.iter().max().unwrap() as f64;
     let mut res = Vec::with_capacity(curve.len());
     res.extend(
-        curve.into_iter().map(|&v| v as f64 / max)
+        curve.iter().map(|&v| v as f64 / max)
     );
     res
 }
